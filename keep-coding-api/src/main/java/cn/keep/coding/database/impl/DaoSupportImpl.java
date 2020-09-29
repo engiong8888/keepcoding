@@ -3,7 +3,7 @@ package cn.keep.coding.database.impl;
 import cn.keep.coding.database.*;
 import cn.keep.coding.utils.ReflectionUtil;
 import cn.keep.coding.utils.StringUtil;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

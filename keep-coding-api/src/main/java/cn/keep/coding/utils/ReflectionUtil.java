@@ -5,7 +5,7 @@ import cn.keep.coding.database.annotation.Column;
 import cn.keep.coding.database.ColumnMeta;
 import cn.keep.coding.database.annotation.Column;
 import cn.keep.coding.database.annotation.Id;
-import org.apache.commons.collections.map.HashedMap;
+import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;

@@ -6,7 +6,7 @@ import cn.keep.coding.database.DataMeta;
 import cn.keep.coding.database.SqlMetaBuilder;
 import cn.keep.coding.database.annotation.Table;
 import cn.keep.coding.utils.ReflectionUtil;
-import org.apache.commons.lang.StringUtils;
+import org.apache.tools.ant.util.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
