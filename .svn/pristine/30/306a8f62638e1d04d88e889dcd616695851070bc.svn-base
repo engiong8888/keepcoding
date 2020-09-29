@@ -1,0 +1,56 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.utils.PushWSUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.AckRequest;
+import com.corundumstudio.socketio.HandshakeData;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.listener.DataListener;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 设备通道监听
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-10-31 17:15
+ */
+public class WSDeviceDataListener extends BaseBS implements DataListener<Object> {
+
+    @Override
+    public void onData(SocketIOClient socketIOClient, Object object, AckRequest ackRequest) throws Exception {
+        int status = WSConstants.ACK_SUCCESS;
+        String message = "成功";
+        if (!socketIOClient.getAllRooms().contains(WSConstants.WS_CHANNEL_DATA)) {
+            status = WSConstants.ACK_ERROR;
+            message = "Error : Not a data channel";
+            getLogger().error(new StringBuffer("Device Info Report Error↑ Not a data channel Content : ")
+                    .append(JSON.toJSONString(socketIOClient.getAllRooms())).toString());
+        } else {
+            HandshakeData handshakeData = socketIOClient.getHandshakeData();
+            try {
+                JSONObject jsonObject = JSON.parseObject(object.toString());
+                jsonObject.put("create_time", System.currentTimeMillis());
+                PushWSUtil.getInstance().sendDeviceMsg(jsonObject);
+                getLogger().info(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                        .append("\nDevice Info Report ↑ Content : ")
+                        .append(object).toString());
+            } catch (Exception e) {
+                status = WSConstants.ACK_ERROR;
+                message = e.getMessage();
+                getLogger().error(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                        .append("\nDevice Info Report Error↑ Content : ")
+                        .append(object).toString());
+            }
+        }
+        if (ackRequest.isAckRequested()) {
+            ackRequest.sendAckData(status, message);
+        }
+    }
+}

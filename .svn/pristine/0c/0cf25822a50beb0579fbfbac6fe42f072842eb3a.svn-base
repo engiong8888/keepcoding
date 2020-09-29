@@ -1,0 +1,124 @@
+package cn.gnw.push.consumer.interfaces;
+
+import cn.gnw.push.consumer.fallback.PushServiceClientFallback;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 推送服务客户端接口
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-17 11:25
+ */
+@FeignClient(value = "gnw-push-provider", fallback = PushServiceClientFallback.class)
+public interface PushServiceClient {
+
+    @PostMapping(value = "/push/sms/send")
+    String sendSms(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/sms/message/send")
+    String aliyunSendSms(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/sms/update/sms_config")
+    String updateRedisSmsConfig();
+
+    @PostMapping(value = "/push/sms/query/sms_config")
+    String getRedisSmsConfig(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/sms/query/record")
+    String querySmsRecord(@RequestBody JSONObject body);
+
+    //mail
+    @PostMapping(value = "/push/mail/send")
+    String sendMail(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/mail/update/mail_config")
+    String updateRedisMailConfig();
+
+    @PostMapping(value = "/push/mail/query/mail_config")
+    String getRedisMailConfig(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/mail/query/record")
+    String getPushMailRecord(@RequestBody JSONObject body);
+
+    //极光
+    @PostMapping(value = "/push/jg/send")
+    String sendJg(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/jg/receive/report")
+    String getReportReceiveds(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/jg/binding")
+    String jgBindingRegId(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/jg/unbind")
+    String jgUnbind(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/jg/update/jg_config")
+    String updateRedisJgConfig();
+
+    @PostMapping(value = "/push/jg/query/record")
+    String queryJgPushRecord(@RequestBody JSONObject body);
+
+    //vivo
+    @PostMapping(value = "/push/vivo/send")
+    String vivoSend(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/send/group")
+    String vivoSendGroup(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/send/all")
+    String vivoSendAll(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/binding")
+    String bindingRegId(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/unbind")
+    String unbind(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/statistics")
+    String getStatistics(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/update/vivo_config")
+    String updateRedisVivoConfig();
+
+    @PostMapping(value = "/push/vivo/query/record")
+    String queryVivoPushRecord(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/vivo/notify")
+    String vivoPushNotify(@RequestBody JSONObject body);
+
+    //华为
+    @PostMapping(value = "/push/huawei/send")
+    String huaweiSend(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/huawei/binding")
+    String huaweiBindingRegId(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/huawei/unbind")
+    String huaweiUnbind(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/huawei/notify")
+    String huaweiPushNotify(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/huawei/update/huawei_config")
+    String updateRedisHuaweiConfig();
+
+    @PostMapping(value = "/push/huawei/query/record")
+    String queryHuaweiPushRecord(@RequestBody JSONObject body);
+
+    //推送聚合
+    @PostMapping(value = "/push/assemble/send")
+    String assembleSend (@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/assemble/binding")
+    String assembleBinding(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/assemble/unbind")
+    String assembleUnbind(@RequestBody JSONObject body);
+
+    @PostMapping(value = "/push/assemble/query/redis_config")
+    String assemblequeryRedisConfigs(@RequestBody JSONObject body);
+
+}

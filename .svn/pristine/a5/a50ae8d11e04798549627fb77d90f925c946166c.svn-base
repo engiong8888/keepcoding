@@ -1,0 +1,37 @@
+package cn.gnw.push.provider.config;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+/**
+ * 小米推送配置
+ *
+ * @author: chengzd
+ * @mail
+ * @date: 2019-07-11 16:20
+ */
+@Component
+@ConfigurationProperties(prefix = "mi")
+public class MiConfig extends BaseBS {
+
+    private String sandbox;
+
+    private int sandRetries;
+
+    public String getSandbox() {
+        return sandbox;
+    }
+
+    public void setSandbox(String sandbox) {
+        this.sandbox = sandbox;
+    }
+
+    public int getSandRetries() {
+        return sandRetries;
+    }
+
+    public void setSandRetries(int sandRetries) {
+        this.sandRetries = sandRetries;
+    }
+}

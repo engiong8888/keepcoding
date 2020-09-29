@@ -1,0 +1,222 @@
+package cn.gnw.push.provider;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.RedisUtil;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 启动加载类
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-18 14:48
+ */
+@Order(2)
+@Component
+public class ServerStartedReport implements CommandLineRunner {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Override
+    public void run(String... strings) throws Exception {
+
+        Map<String, String> params = new HashMap<String, String>();
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        this.loadSmsConfig(simpleMybatisDao);
+        this.loadMailConfig(simpleMybatisDao);
+        this.loadJPushConfig(simpleMybatisDao);
+        this.loadHuaweiConfig(simpleMybatisDao);
+        this.loadVivoConfig(simpleMybatisDao);
+        this.loadMiConfig(simpleMybatisDao);
+        System.out.println("===========ServerStartedReport启动====="+ LocalDateTime.now());
+    }
+
+    /**
+     * 加载短信配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadSmsConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushSmsConfig = simpleMybatisDao.selectList("push.sms.queryPushSmsConfig", params, Map.class);
+        if(!pushSmsConfig.isEmpty()){
+            Map<String, String> smsConfig = null;
+            JSONObject confirmMsg = null;
+
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_SMS_CONFIG);
+            for(int i = 0; i <pushSmsConfig.size(); i++){
+                smsConfig = pushSmsConfig.get(i);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("sms_tid", smsConfig.get("sms_tid"));
+                confirmMsg.put("sms_pwd", smsConfig.get("sms_pwd"));
+                confirmMsg.put("sms_platform", smsConfig.get("sms_platform"));
+                confirmMsg.put("source", smsConfig.get("sms_source"));
+                confirmMsg.put("remark", smsConfig.get("remark"));
+                RedisUtil.getInstance().setConfigToRedis(Constants.REDIS_SMS_CONFIG, confirmMsg);
+
+                logger.info(new StringBuffer("缓存短信配置config [Redis][key]{").append(Constants.REDIS_SMS_CONFIG)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+
+    }
+
+    /**
+     * 加载邮件配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadMailConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushMailConfig = simpleMybatisDao.selectList("push.mail.queryPushMailConfig", params, Map.class);
+        if(!pushMailConfig.isEmpty()){
+            Map<String, String> smsConfig = null;
+            JSONObject confirmMsg = null;
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_MAIL_CONFIG);
+            for(int i = 0; i <pushMailConfig.size(); i++){
+                smsConfig = pushMailConfig.get(i);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("smtp_host", smsConfig.get("smtp_host"));
+                confirmMsg.put("from_mail", smsConfig.get("from_mail"));
+                confirmMsg.put("from_mail_pwd", smsConfig.get("from_mail_pwd"));
+                confirmMsg.put("source", smsConfig.get("source"));
+                RedisUtil.getInstance().setConfigToRedis(Constants.REDIS_MAIL_CONFIG, confirmMsg);
+
+                logger.info(new StringBuffer("缓存邮件配置config [Redis][key]{").append(Constants.REDIS_MAIL_CONFIG)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+    }
+
+    /**
+     * 加载极光推送配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadJPushConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushJgConfig = simpleMybatisDao.selectList("push.jiguang.queryPushJgConfig", params, Map.class);
+        if(!pushJgConfig.isEmpty()){
+            Map<String, String> jgConfig = null;
+            JSONObject confirmMsg = null;
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_JG_CONFIG);
+            for(int i = 0; i <pushJgConfig.size(); i++){
+                jgConfig = pushJgConfig.get(i);
+                StringBuffer key = new StringBuffer(Constants.REDIS_JG_CONFIG);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_key", jgConfig.get("app_key"));
+                confirmMsg.put("master_secret", jgConfig.get("master_secret"));
+                confirmMsg.put("source", jgConfig.get("source"));
+                RedisUtil.getInstance().setConfigToRedis(key.toString(), confirmMsg);
+
+                logger.info(new StringBuffer("缓存极光推送配置config [Redis][key]{").append(key)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+    }
+
+    /**
+     * 加载vivo推送配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadVivoConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushJgConfig = simpleMybatisDao.selectList("push.vivo.queryPushVivoConfig", params, Map.class);
+        if(!pushJgConfig.isEmpty()){
+            Map<String, String> jgConfig = null;
+            JSONObject confirmMsg = null;
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_VIVO_CONFIG);
+            for(int i = 0; i <pushJgConfig.size(); i++){
+                jgConfig = pushJgConfig.get(i);
+                StringBuffer key = new StringBuffer(Constants.REDIS_VIVO_CONFIG);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_id", jgConfig.get("app_id"));
+                confirmMsg.put("app_key", jgConfig.get("app_key"));
+                confirmMsg.put("app_secret", jgConfig.get("app_secret"));
+                confirmMsg.put("source", jgConfig.get("source"));
+                RedisUtil.getInstance().setConfigToRedis(key.toString(), confirmMsg);
+
+                logger.info(new StringBuffer("缓存vivo推送配置config [Redis][key]{").append(key)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+    }
+
+    /**
+     * 加载华为推送配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadHuaweiConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushJgConfig = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiConfig", params, Map.class);
+        if(!pushJgConfig.isEmpty()){
+            Map<String, String> jgConfig = null;
+            JSONObject confirmMsg = null;
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_HUAWEI_CONFIG);
+            for(int i = 0; i <pushJgConfig.size(); i++){
+                jgConfig = pushJgConfig.get(i);
+                StringBuffer key = new StringBuffer(Constants.REDIS_HUAWEI_CONFIG);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_id", jgConfig.get("app_id"));
+                confirmMsg.put("app_secret", jgConfig.get("app_secret"));
+                confirmMsg.put("app_pkg", jgConfig.get("app_pkg"));
+                confirmMsg.put("source", jgConfig.get("source"));
+                RedisUtil.getInstance().setConfigToRedis(key.toString(), confirmMsg);
+
+                logger.info(new StringBuffer("缓存华为推送配置config [Redis][key]{").append(key)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+    }
+
+    /**
+     * 加载小米推送配置到redis
+     * @param simpleMybatisDao
+     */
+    private void loadMiConfig(SimpleMybatisDao simpleMybatisDao){
+        JSONObject params = new JSONObject();
+        params.put("enabled", "1");
+        List<Map> pushMiConfig = simpleMybatisDao.selectList("push.mi.queryPushMiConfig", params, Map.class);
+        if(!pushMiConfig.isEmpty()){
+            Map<String, String> miConfig = null;
+            JSONObject confirmMsg = null;
+            RedisUtil.getInstance().deleteConfigToRedis(Constants.REDIS_MI_CONFIG);
+            for(int i = 0; i <pushMiConfig.size(); i++){
+                miConfig = pushMiConfig.get(i);
+                StringBuffer key = new StringBuffer(Constants.REDIS_MI_CONFIG);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("android_app_key", miConfig.get("android_app_key"));
+                confirmMsg.put("android_app_secret", miConfig.get("android_app_secret"));
+                confirmMsg.put("android_package", miConfig.get("android_package"));
+                confirmMsg.put("ios_app_key", miConfig.get("ios_app_key"));
+                confirmMsg.put("ios_app_secret", miConfig.get("ios_app_secret"));
+                confirmMsg.put("source", miConfig.get("source"));
+                RedisUtil.getInstance().setConfigToRedis(key.toString(), confirmMsg);
+
+                logger.info(new StringBuffer("缓存小米推送配置config [Redis][key]{").append(key)
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+        }
+    }
+
+
+}

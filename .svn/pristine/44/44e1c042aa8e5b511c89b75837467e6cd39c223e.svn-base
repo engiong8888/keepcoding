@@ -1,0 +1,83 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "push_type",
+    "android_app_key",
+    "android_app_secret",
+    "android_package",
+    "source",
+    "enabled"
+  ],
+  "properties": {
+    "push_type": {
+      "$id": "#/properties/push_type",
+      "type": "string",
+      "title": "The Push_type Schema",
+      "default": "",
+      "examples": [
+        "pt_01"
+      ],
+      "maxLength":5,
+      "pattern": "^(.*)$"
+    },
+    "android_app_key": {
+      "$id": "#/properties/android_app_key",
+      "type": "string",
+      "title": "The Android_app_key Schema",
+      "default": "",
+      "examples": [
+        "fd2a16b9c40217a80becf3fb"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "android_app_secret": {
+      "$id": "#/properties/android_app_secret",
+      "type": "string",
+      "title": "The Android_app_secret Schema",
+      "default": "",
+      "examples": [
+        "d2004ef87dbc00285c993eb3"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "android_package": {
+      "$id": "#/properties/android_package",
+      "type": "string",
+      "title": "The Android_package Schema",
+      "default": "",
+      "examples": [
+        "com.test.push"
+      ],
+      "maxLength":64,
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "enabled": {
+      "$id": "#/properties/enabled",
+      "type": "string",
+      "title": "The Enabled Schema",
+      "default": "",
+      "examples": [
+        "1"
+      ],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    }
+  }
+}

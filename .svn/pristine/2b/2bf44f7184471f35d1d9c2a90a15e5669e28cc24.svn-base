@@ -1,0 +1,47 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "device_id",
+    "regist_id",
+    "platform"
+  ],
+  "properties": {
+    "device_id": {
+      "$id": "#/properties/device_id",
+      "type": "string",
+      "title": "The Device_id Schema",
+      "default": "",
+      "examples": [
+        "ed10734fc54691bc07cd76d0a49d1b78"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "regist_id": {
+      "$id": "#/properties/regist_id",
+      "type": "string",
+      "title": "The Regist_id Schema",
+      "default": "",
+      "examples": [
+        "15432177597301049126090"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "platform": {
+      "$id": "#/properties/platform",
+      "type": "string",
+      "title": "The Platform Schema",
+      "default": "",
+      "examples": [
+        "03"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    }
+  }
+}

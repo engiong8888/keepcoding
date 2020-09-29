@@ -1,0 +1,72 @@
+package cn.gnw.push.api.entity.iosmdm;
+
+import java.io.Serializable;
+import java.sql.Timestamp;
+
+public class Profile implements Serializable {
+
+    private static final long serialVersionUID = -7048625537017892345L;
+
+    private String profileId;
+    /**设备编号（和Device主键对应）**/
+    private String deviceId;
+    /**注册时间**/
+    private Timestamp createTime = new Timestamp(System.currentTimeMillis());
+    /**命令类型**/
+    private String ctype;
+    /**执行结果**/
+    private String result;
+    /**更新时间**/
+    private Timestamp updateTime = new Timestamp(System.currentTimeMillis());
+    
+
+    public String getCtype() {
+		return ctype;
+	}
+
+	public void setCtype(String ctype) {
+		this.ctype = ctype;
+	}
+
+	public String getProfileId() {
+        return profileId;
+    }
+
+    public void setProfileId(String profileId) {
+        this.profileId = profileId;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public Timestamp getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Timestamp createTime) {
+        this.createTime = createTime;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
+    }
+    
+    public Timestamp getUpdateTime() {
+		return updateTime;
+	}
+
+	public void setUpdateTime(Timestamp updateTime) {
+		this.updateTime = updateTime;
+	}
+
+
+}

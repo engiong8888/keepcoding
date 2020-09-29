@@ -1,0 +1,57 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "to",
+    "subject",
+    "message_text",
+    "source"
+  ],
+  "properties": {
+    "to": {
+      "$id": "#/properties/to",
+      "type": "string",
+      "title": "The To Schema",
+      "default": "",
+      "examples": [
+        "chengzd@txtws.com"
+      ],
+      "maxLength":255,
+      "format": "email"
+    },
+    "subject": {
+      "$id": "#/properties/subject",
+      "type": "string",
+      "title": "The Subject Schema",
+      "default": "",
+      "maxLength":255,
+      "examples": [
+        "标题"
+      ]
+    },
+    "message_text": {
+      "$id": "#/properties/message_text",
+      "type": "string",
+      "title": "The Message_text Schema",
+      "default": "",
+      "examples": [
+        "内容"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "maxLength":2,
+      "examples": [
+        "02"
+      ],
+      "pattern": "^(.*)$"
+    }
+  }
+}

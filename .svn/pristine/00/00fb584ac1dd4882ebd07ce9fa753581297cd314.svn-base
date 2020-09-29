@@ -1,0 +1,75 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 短信推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-17 11:34
+ */
+@RestController
+@RequestMapping(value = "/push/sms")
+public class SmsPushController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 短信发送
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.sendSms(rParams);
+    }
+
+    /**
+     * 短信发送(阿里云)
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/message/send")
+    @ResponseBody
+    private String aliyunSend(@RequestBody JSONObject rParams){
+        return pushServiceClient.aliyunSendSms(rParams);
+    }
+
+
+    /**
+     * 更新短信配置redis
+     * @return
+     */
+    @PostMapping("/update/sms_config")
+    @ResponseBody
+    private String updateRedisSmsConfig(){
+        return pushServiceClient.updateRedisSmsConfig();
+    }
+
+    /**
+     * 获取短信配置redis
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/sms_config")
+    @ResponseBody
+    private String getRedisSmsConfig(@RequestBody JSONObject rParams){
+        return pushServiceClient.getRedisSmsConfig(rParams);
+    }
+
+    /**
+     * 短信发送记录
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String querySmsRecord(@RequestBody JSONObject rParams){
+        return pushServiceClient.querySmsRecord(rParams);
+    }
+
+}

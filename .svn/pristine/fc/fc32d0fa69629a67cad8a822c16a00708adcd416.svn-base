@@ -1,0 +1,381 @@
+package cn.gnw.push.websocket.provider.utils;
+
+import cn.gnw.pub.base.utils.DateUtil;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 启动reids存储工具类
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-09-28 9:27
+ */
+public class RedisUtil {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private WSConfig config = SpringBeanConfig.getBean(WSConfig.class);
+    private ShardedJedisPool shardedJedisPool = SpringBeanConfig.getBean("shardedJedisPool", ShardedJedisPool.class);
+    private RedisUtil() {
+    }
+
+    private static class StartedUtilManageHolder {
+        private static RedisUtil instance = new RedisUtil();
+    }
+
+    public static RedisUtil getInstance() {
+        return StartedUtilManageHolder.instance;
+    }
+
+    /**
+     * 是否顶号操作
+     *
+     * @param object
+     * @return
+     */
+    public boolean isTopNumber(JSONObject object) {
+        ShardedJedis shardedJedis = null;
+        try {
+            String deviceId = object.getString("device_id");
+            String channel = object.getString("channel");
+            shardedJedis = shardedJedisPool.getResource();
+            String redisKey = new StringBuffer(WSConstants.WS_RS_COUNT)
+                    .append(":").append(deviceId).toString();
+            if (shardedJedis.hexists(redisKey, channel)) {
+                int cout = Integer.valueOf(shardedJedis.hget(redisKey, channel));
+                if (WSConstants.WS_RS_MAX_COUT < cout) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            logger.error("TopNumber get key error : " + e);
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * ws 连接
+     * 增加 redis Key ：WS_RS_ONLINE、WS_RS_ONLINE_TTL、WS_RS_BIND_SERVER、WS_RS_COUNT
+     *
+     * @param object
+     */
+    public void connectRecord(JSONObject object) {
+        ShardedJedis shardedJedis = null;
+        try {
+            String deviceId = object.getString("device_id");
+            String clientId = object.getString("client_id");
+            String channel = object.getString("channel");
+            //创建设备在线标识
+            String redisKey = new StringBuffer(WSConstants.WS_RS_ONLINE)
+                    .append(":").append(deviceId).toString();
+            shardedJedis = shardedJedisPool.getResource();
+            shardedJedis.hset(redisKey
+                    , channel, clientId);//在线标识
+            shardedJedis.expire(redisKey, WSConstants.WS_RS_ONLINE_TTL);//在线标识 ping Interval+timeout 秒过期
+            //指令通道连接成功时 创建设备服务绑定标识  (deviceId->ServerIp)
+            if (channel.equals(WSConstants.WS_CHANNEL_COMMAND)) {
+                shardedJedis.hset(WSConstants.WS_RS_BIND_SERVER, deviceId, WSUtil.getServerIP());
+            }
+            //设备阈值标识 防止重复登陆
+            String coutKey = new StringBuffer(WSConstants.WS_RS_COUNT)
+                    .append(":").append(deviceId).toString();
+            int cout = 1;
+            if (shardedJedis.hexists(coutKey, channel)) {
+                cout = Integer.valueOf(shardedJedis.hget(coutKey, channel));
+                cout++;
+            }
+            shardedJedis.hset(coutKey, channel, String.valueOf(cout));
+            if (cout == 1) {
+                //标识不存在 设置过期时间
+                shardedJedis.expire(coutKey, WSConstants.WS_RS_COUNT_EEXPIRED);
+            }
+        } catch (Exception e) {
+            logger.error("connect get key error : " + e);
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+    }
+
+    /**
+     * ws 关闭连接
+     * 增加 redis Key ：WS_RS_DEVICE_OFFLINE
+     * 删除 redis Key ：WS_RS_ONLINE、WS_CHANNEL_COMMAND
+     *
+     * @param object
+     */
+    public boolean disconnectRecord(JSONObject object) {
+        ShardedJedis shardedJedis = null;
+        try {
+            String deviceId = object.getString("device_id");
+            String clientId = object.getString("client_id");
+            String channel = object.getString("channel");
+            String redisKey = new StringBuffer(WSConstants.WS_RS_ONLINE)
+                    .append(":").append(deviceId).toString();
+            shardedJedis = shardedJedisPool.getResource();
+            //移除设备在线标识
+            if (shardedJedis.hexists(redisKey, channel)
+                    && shardedJedis.hget(redisKey, channel).equals(clientId)) {
+                shardedJedis.hdel(redisKey, channel);
+                //指令通道断开时，移除设备服务绑定标识
+                if (channel.equals(WSConstants.WS_CHANNEL_COMMAND) &&
+                        shardedJedis.hexists(WSConstants.WS_RS_BIND_SERVER, deviceId)) {
+                    shardedJedis.hdel(WSConstants.WS_RS_BIND_SERVER, deviceId);
+                }
+                return true;
+            } else {
+                logger.warn(new StringBuffer("disconnect get key error : ").append(redisKey)
+                        .append("\n params : ").append(object.toJSONString())
+                        .append("\n redis clientId : ").append(shardedJedis.hexists(redisKey, channel)
+                                ? shardedJedis.hget(redisKey, channel) : "no set clientId").toString());
+            }
+        } catch (Exception e) {
+            logger.error("disconnect get key error : " + e);
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 客户端心跳
+     * 刷新 redis Key ：WS_RS_ONLINE、WS_RS_HEART_BEAT、
+     *
+     * @param deviceId
+     */
+    public void keepAlive(JSONObject object) {
+        ShardedJedis shardedJedis = null;
+        try {
+            String deviceId = object.getString("device_id");
+            String channel = object.getString("channel");
+            String clientId = object.getString("client_id");
+            String redisKey = new StringBuffer(WSConstants.WS_RS_ONLINE)
+                    .append(":").append(deviceId).toString();
+            String beatKey = new StringBuffer(WSConstants.WS_RS_HEART_BEAT)
+                    .append(":").append(channel).toString();
+            shardedJedis = shardedJedisPool.getResource();
+            shardedJedis.hset(beatKey, deviceId, DateUtil.getDateString(new Date()));//重置设备心跳时间
+            //redis通道丢失.
+            if (shardedJedis.hsetnx(redisKey, channel, clientId) == 1) {
+                logger.warn(new StringBuffer("keepAlive Channel loss : ").append(object).toString());
+            }
+            if (channel.equals(WSConstants.WS_CHANNEL_DATA)) {
+                shardedJedis.expire(redisKey, WSConstants.WS_RS_ONLINE_TTL);// 重置在线标识过期时间
+            }
+        } catch (Exception e) {
+            logger.error("keepAlive get key error : " + e);
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+    }
+
+    /**
+     * 通过deviceId & channel获取当前在线的clientId
+     *
+     * @param object
+     * @return
+     */
+    public String deviceToClient(JSONObject object) {
+        ShardedJedis shardedJedis = null;
+        try {
+            String deviceId = object.getString("device_id");
+            String channel = object.getString("channel");
+            String redisKey = new StringBuffer(WSConstants.WS_RS_ONLINE)
+                    .append(":").append(deviceId).toString();
+            shardedJedis = shardedJedisPool.getResource();
+            if (shardedJedis.hexists(redisKey, channel)) {
+                String clientId = shardedJedis.hget(redisKey, channel);
+                if (clientId != null) {
+                    return clientId;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("deviceSyncOnline get key error :" + e.getMessage());
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取deviceId 所在服务IP（用于指令下发
+     *
+     * @param deviceId
+     * @return
+     */
+    public String getServerIP(String deviceId) {
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            if (shardedJedis.hexists(WSConstants.WS_RS_BIND_SERVER, deviceId)) {
+                String serverIP = shardedJedis.hget(WSConstants.WS_RS_BIND_SERVER, deviceId);
+                return serverIP;
+            }
+        } catch (Exception e) {
+            logger.error("getServerIP get key error :" + e.getMessage());
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * 初始化设备绑定记录，存入redis
+     *
+     * @param deviceList
+     */
+    public void initDeviceBind(List<Map> deviceList) {
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            Iterator<Map> iterator = deviceList.iterator();
+            while (iterator.hasNext()) {
+                Map<String, String> infoMap = iterator.next();
+                String deviceId = infoMap.get("device_id");
+                String channel = infoMap.get("channel");
+                String clientId = infoMap.get("client_id");
+                String redisKey = WSConstants.WS_RS_DEVICE_BIND + ":" + channel;
+                if (!shardedJedis.hexists(redisKey, deviceId))
+                    shardedJedis.hset(redisKey, deviceId, clientId);
+            }
+        } catch (Exception e) {
+            logger.error("initDeviceBind error :" + e.getMessage());
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+    }
+
+    /**
+     * 增加设备绑定记录
+     *
+     * @param deviceId
+     * @param channel
+     */
+    public void setDeviceBind(Map<String, String> params) {
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            String deviceId = params.get("device_id");
+            String channel = params.get("channel");
+            String clientId = params.get("client_id");
+            String redisKey = WSConstants.WS_RS_DEVICE_BIND + ":" + channel;
+            boolean exists = shardedJedis.hexists(redisKey, deviceId);
+            if (exists) {
+                logger.warn(new StringBuffer("setDeviceBind error  exists device_id & channel:")
+                        .append(deviceId).append(" & ").append(channel).toString());
+            } else {
+                shardedJedis.hset(redisKey, deviceId, clientId);
+            }
+        } catch (Exception e) {
+            logger.error("setDeviceBind get key error :" + e.getMessage());
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+
+    }
+
+    /**
+     * 判断设备是否登陆过
+     *
+     * @param deviceId
+     * @param channel
+     * @return
+     */
+    public boolean isDeviceLogin(String deviceId, String channel) {
+        boolean exists = false;
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            String redisKey = WSConstants.WS_RS_DEVICE_BIND + ":" + channel;
+            exists = shardedJedis.hexists(redisKey, deviceId);
+        } catch (Exception e) {
+            logger.error("isDevice get key error :" + e.getMessage());
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return exists;
+    }
+
+    /*------------------------    设备中心    -------------------------*/
+
+    /**
+     * 同步在线客户端
+     */
+    public List<String> getSyncClientOnline(List<String> deviceList) {
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            String dataKey = new StringBuffer(WSConstants.WS_RS_HEART_BEAT)
+                    .append(":").append(WSConstants.WS_CHANNEL_DATA).toString();
+            String commandKey = new StringBuffer(WSConstants.WS_RS_HEART_BEAT)
+                    .append(":").append(WSConstants.WS_CHANNEL_COMMAND).toString();
+            Map<String, String> map = shardedJedis.hgetAll(dataKey);
+            Iterator<String> iterator = deviceList.iterator();
+            int timeOut = (config.getPingTimeout() + config.getPingInterval()) / 1000;
+            while (iterator.hasNext()) {
+                String deviceId = iterator.next();
+                if (map.containsKey(deviceId)) {
+                    //移除心跳时间内的连接
+                    long seconds = DateUtil.getDateSubDateToSeconds(DateUtil.getStringToDate(map.get(deviceId)), new Date());
+                    if (seconds < timeOut) {
+                        iterator.remove();
+                    }
+                }
+            }
+//            shardedJedis.del(dataKey);//清空数据通道心跳数据
+//            shardedJedis.del(commandKey);//清空指令通道心跳数据
+            logger.info(new StringBuffer("Device Center SyncClientOnline" +
+                    "\nThese Devices Offline : ")
+                    .append(JSON.toJSONString(deviceList)).toString());
+        } catch (Exception e) {
+            logger.error("device sync get key error : " + e);
+        } finally {
+            if (shardedJedis != null) {
+                shardedJedis.close();
+                shardedJedis = null;
+            }
+        }
+        return deviceList;
+    }
+}

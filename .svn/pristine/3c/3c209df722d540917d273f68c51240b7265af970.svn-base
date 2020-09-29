@@ -1,0 +1,52 @@
+package cn.gnw.push.api.utils;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+
+/**
+ * 邮件推送工具类
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-19 10:34
+ */
+public class PushMailUtil {
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private PushMailUtil () {};
+    private static class PushMailUtilManageHolder {
+        private static PushMailUtil instance = new PushMailUtil();
+    }
+    public static PushMailUtil getInstance() {
+        return PushMailUtilManageHolder.instance;
+    }
+
+    public JSONObject toPushMailInQueue (Map<String, String> params) {
+
+        String recordId = params.get("record_id");
+        String to = params.get("to");
+        String subject = params.get("subject");
+        String messageText = params.get("messageText");
+        String fromMail = params.get("from_mail");
+        String fromMailPwd = params.get("from_mail_pwd");
+
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        JSONObject msg = new JSONObject();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        String time = formatter.format(new Date());
+        msg.put("record_id", recordId);
+        msg.put("to", to);
+        msg.put("subject", subject);
+        msg.put("messageText", messageText);
+        msg.put("from_mail", fromMail);
+        msg.put("from_mail_pwd", fromMailPwd);
+        rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_MAIL_QUEUE, msg);
+        return msg;
+    }
+}

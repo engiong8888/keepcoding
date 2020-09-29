@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>没有登陆</title>
+	<div th:replace="comm/include_head :: html"></div>
+	<script th:src="@{/lib/jquery-1.11.3.min.js}"></script>
+</head>
+<script type="text/javascript" th:inline="javascript">
+    var ctx = /*[[${#request.getContextPath()}]]*/ '';
+    var second = 3;
+    var timer;
+
+    $(document).ready(function() {
+
+        $("#tologinBtn").on("click", function() {
+            tologin();
+        });
+
+        $("#cd").on("click", function() {
+            tologin();
+        });
+
+        timer = setTimeout('countdown()', 1000);
+    });
+
+    /** 倒数计时 */
+    function countdown() {
+        second--;
+        if(second >= 0) {
+            $("#lastSecond").html(second);
+            timer = setTimeout("countdown()", 1000);//调用自身
+        } else {
+            clearTimeout(timer);
+            tologin();
+        }
+    }
+
+    /** 判断有没有框架，如果没有直接跳转到登陆页，有则回到父窗口再跳转 */
+    function tologin() {
+        top.location.href = ctx + "/payman/system/login";
+    }
+</script>
+<body>
+<div class="page-tips">
+	<i class="tips-fail"></i>
+	<h2 id="tologinBtn" name="tologinBtn" style="cursor:pointer;">系统session超时，重新登录</h2>
+	<a id="cd" href="#" title="">页面<span id="lastSecond">3</span>秒后将自动跳转</a>
+</div>
+</body>
+</html>

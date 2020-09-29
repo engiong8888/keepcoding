@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>支付中心 - 管理平台</title>
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <!-- 清除浏览器缓存 -->
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noarchive">
+    <link rel="shortcut icon" th:href="@{/images/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <!-- 第三方库文件 -->
+    <script th:src="@{/lib/jquery-1.11.3.min.js}"></script>
+    <script th:src="@{/lib/layer/layer.js}"></script>
+    <!-- 全局变量 -->
+    <script type="text/javascript" th:inline="javascript">
+        var ctx = /*[[${#request.getContextPath()}]]*/ '';
+    </script>
+    <!-- 自定义工具类 -->
+    <script th:src="@{/js/modules/comm/style.js}"></script>
+    <script th:src="@{/js/utils/layer.js}"></script>
+</head>
+<body style="background:#ebebeb">
+    <div class="login-top"></div>
+    <form class="uiform" method="post" autocomplete="off" id="editForm">
+        <dl class="log-head">
+            <dt><img th:src="@{/images/log_head.png}" src="/images/log_head.png" alt="" title=""></dt>
+            <dd class="left"></dd>
+            <dd class="right"></dd>
+        </dl>
+        <div class="form-group form-group-name">
+            <i class="log-icon"></i>
+            <input class="form-control" type="text" placeholder="请输入用户名" id="username" name="username">
+        </div>
+        <div class="form-group form-group-pwd">
+            <i class="log-icon"></i>
+            <input class="form-control" type="password" value="" placeholder="请输入密码" id="password" name="password">
+        </div>
+        <div class="form-group">
+            <input class="btn-blue" type="button" value="立即登录" id="login">
+        </div>
+    </form>
+    <div class="application-sign">支付中心 - 管理平台</div>
+    <script th:src="@{/js/utils/md5.js}"></script>
+    <script th:src="@{/js/modules/comm/login.js}"></script>
+</body>
+</html>

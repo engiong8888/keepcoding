@@ -1,0 +1,171 @@
+package cn.gnw.push.api.entity.jsonschena;
+
+/**
+ * jsonSchena配置文件
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-12-20 9:48
+ */
+public class SchenaConfigUtil {
+
+    /**
+     * 邮件
+     */
+
+    //推送
+    public final static String SCHENA_MAIL_SEND = "/jsonSchema/mail/send.json";
+
+    //获取邮件redis缓存
+    public final static String SCHENA_MAIL_QUERY_CONFIG = "/jsonSchema/mail/query_mail_config.json";
+
+    //获取邮件发送记录
+    public final static String SCHENA_MAIL_QUERY_RECORD = "/jsonSchema/mail/query_record.json";
+
+    /**
+     * 短信
+     */
+    //短信推送
+    public final static String SCHENA_SMS_SEND = "/jsonSchema/sms/send.json";
+
+    //获取短信redis缓存
+    public final static String SCHENA_SMS_QUERY_CONFIG = "/jsonSchema/sms/query_sms_config.json";
+
+    //获取短信发送记录
+    public final static String SCHENA_SMS_QUERY_RECORD = "/jsonSchema/sms/query_record.json";
+
+    /**
+     * 华为
+     */
+    //华为推送
+    public final static String SCHENA_HUAWEI_SEND = "/jsonSchema/huawei/send.json";
+
+    //绑定
+    public final static String SCHENA_HUAWEI_BINDING = "/jsonSchema/huawei/binding.json";
+
+    //解除绑定
+    public final static String SCHENA_HUAWEI_UNBIND = "/jsonSchema/huawei/unbind.json";
+
+    //获取华为发送记录
+    public final static String SCHENA_HUAWEI_QUERY_RECORD = "/jsonSchema/huawei/query_record.json";
+
+    /**
+     * vivo
+     */
+    //vivo推送（单推）
+    public final static String SCHENA_VIVO_SEND = "/jsonSchema/vivo/send.json";
+
+    //vivo推送（群推）
+    public final static String SCHENA_VIVO_GROUP_SEND = "/jsonSchema/vivo/send_group.json";
+
+    //vivo推送（全推）
+    public final static String SCHENA_VIVO_ALL_SEND = "/jsonSchema/vivo/send_all.json";
+
+    //获取消息推送统计值
+    public final static String SCHENA_VIVO_STATISTICS = "/jsonSchema/vivo/statistics.json";
+
+    //绑定
+    public final static String SCHENA_VIVO_BINDING = "/jsonSchema/vivo/binding.json";
+
+    //解除绑定
+    public final static String SCHENA_VIVO_UNBIND = "/jsonSchema/vivo/unbind.json";
+
+    //获取vivo发送记录
+    public final static String SCHENA_VIVO_QUERY_RECORD = "/jsonSchema/vivo/query_record.json";
+
+    /**
+     * 极光
+     */
+    //极光推送
+    public final static String SCHENA_JIGUANG_SEND = "/jsonSchema/jiguang/send.json";
+
+    //极光推送（全推）
+    public final static String SCHENA_JIGUANG_ALL_SEND = "/jsonSchema/jiguang/send_all.json";
+
+    //获取送到统计信息
+    public final static String SCHENA_JIGUANG_RECEIVE_REPORT = "/jsonSchema/jiguang/receive_report.json";
+
+    //绑定
+    public final static String SCHENA_JIGUANG_BINDING = "/jsonSchema/jiguang/binding.json";
+
+    //解除绑定
+    public final static String SCHENA_JIGUANG_UNBIND = "/jsonSchema/jiguang/unbind.json";
+
+    //获取极光推送记录
+    public final static String SCHENA_JIGUANG_QUERY_RECORD = "/jsonSchema/jiguang/query_record.json";
+
+    /**
+     * 聚合推送
+     */
+
+    /**推送**/
+    //推送(根)
+    public final static String SCHENA_ASSEMBLE_SEND = "/jsonSchema/assemble/send.json";
+
+    //极光推送(茎)
+    public final static String SCHENA_ASSEMBLE_JIGUANG_SEND = "/jsonSchema/assemble/send/jiguang_send.json";
+
+    //vivo推送(茎)
+    public final static String SCHENA_ASSEMBLE_VIVO_PUSH = "/jsonSchema/assemble/send/vivo_opt_send.json";
+
+    //华为推送(茎)
+    public final static String SCHENA_ASSEMBLE_HUAWEI_SEND = "/jsonSchema/assemble/send/huawei_send.json";
+
+    //vivo推送(叶)
+    public final static String SCHENA_ASSEMBLE_VIVO_SEND = "/jsonSchema/assemble/send/vivosend/vivo_send.json";
+
+    //vivo推送群推(叶)
+    public final static String SCHENA_ASSEMBLE_VIVO_SEND_GROUP = "/jsonSchema/assemble/send/vivosend/vivo_send_group.json";
+
+    //vivo推送全推(叶)
+    public final static String SCHENA_ASSEMBLE_VIVO_SEND_ALL = "/jsonSchema/assemble/send/vivosend/vivo_send_all.json";
+
+    /**绑定**/
+    //绑定(根)
+    public final static String SCHENA_ASSEMBLE_BINDING = "/jsonSchema/assemble/binding.json";
+
+    //极光绑定(茎)
+    public final static String SCHENA_ASSEMBLE_JIGUANG_BINDING = "/jsonSchema/assemble/binding/jiguang_binding.json";
+
+    //vivo绑定(茎)
+    public final static String SCHENA_ASSEMBLE_VIVO_BINDING = "/jsonSchema/assemble/binding/vivo_binding.json";
+
+    //华为绑定(茎)
+    public final static String SCHENA_ASSEMBLE_HUAWEI_BINDING = "/jsonSchema/assemble/binding/huawei_binding.json";
+
+    //小米绑定(茎)
+    public final static String SCHENA_ASSEMBLE_MI_BINDING = "/jsonSchema/assemble/binding/mi_binding.json";
+
+    /**解除绑定**/
+    //绑定绑定(根)
+    public final static String SCHENA_ASSEMBLE_UNBIND = "/jsonSchema/assemble/unbind.json";
+
+    /**获取推送记录**/
+    //获取推送记录
+    public final static String SCHENA_ASSEMBLE_QUERY_RECORD = "/jsonSchema/assemble/query_record.json";
+
+    /**获取数据库配置信息**/
+    //获取数据库配置信息
+    public final static String SCHENA_ASSEMBLE_QUERY_CONFIG = "/jsonSchema/assemble/query_config.json";
+
+    /**新增配置**/
+    //新增配置(根)
+//    public final static String SCHENA_ASSEMBLE_ADD_CONFIG = "/jsonSchema/assemble/add_config.json";
+
+    //新增短信配置(茎)
+    public final static String SCHENA_ASSEMBLE_ADD_SMS_CONFIG = "/jsonSchema/assemble/addConfig/add_sms_config.json";
+
+    //新增邮件配置(茎)
+    public final static String SCHENA_ASSEMBLE_ADD_MAIL_CONFIG = "/jsonSchema/assemble/addConfig/add_mail_config.json";
+
+    //新增极光配置(茎)
+    public final static String SCHENA_ASSEMBLE_ADD_JIGUANG_CONFIG = "/jsonSchema/assemble/addConfig/add_jiguang_config.json";
+
+    //新增华为配置(茎)
+    public final static String SCHENA_ASSEMBLE_ADD_HUAWEI_CONFIG = "/jsonSchema/assemble/addConfig/add_huawei_config.json";
+
+    //新增vivo配置(茎)
+    public final static String SCHENA_ASSEMBLE_ADD_VIVO_CONFIG = "/jsonSchema/assemble/addConfig/add_vivo_config.json";
+
+    //更新redis配置(根)
+    public final static String SCHENA_ASSEMBLE_REFRESH_REDIS_CONFIG = "/jsonSchema/assemble/refresh_redis_config.json";
+}

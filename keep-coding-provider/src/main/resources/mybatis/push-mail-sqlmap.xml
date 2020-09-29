@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.mail">
+
+
+    <!-- 邮件平台账号 -->
+    <resultMap id="mailConfig" type="java.util.Map">
+        <result property="mail_config_id" column="mail_config_id" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="smtp_host" column="smtp_host" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="from_mail" column="from_mail" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="from_mail_pwd" column="from_mail_pwd" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="create_time" column="create_time" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+
+    </resultMap>
+
+    <resultMap id="pushMailRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="from_mail" column="from_mail" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="to_mail" column="to_mail" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="subject" column="subject" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+
+        <result property="source" column="source" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+        <result property="smtp_host" column="smtp_host" typeHandler="cn.keep.coding.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 增加邮件发送记录 -->
+    <insert id="addPushMailRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_mail_record(record_id, from_mail, to_mail, subject, content, result, send_time, remark)
+        VALUES(#{record_id}, #{from_mail}, #{to}, #{subject}, #{messageText}, #{result}, NOW(), #{remark})
+    </insert>
+
+    <!-- 修改邮件发送记录 -->
+    <update id="updatePushMailRecord" parameterType="com.alibaba.fastjson.JSONObject">
+        UPDATE t_push_mail_record t
+        SET t.result = #{result}
+        ,t.remark = #{remark}
+        WHERE t.record_id = #{record_id}
+    </update>
+
+    <!-- 增加邮件配置 -->
+    <insert id="addPushMailConfig" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_mail_config(mail_config_id, smtp_host, from_mail, from_mail_pwd, create_time, source, enabled, remark)
+        VALUES(#{mail_config_id}, #{smtp_host}, #{from_mail}, #{from_mail_pwd}, NOW(), #{source}, #{enabled}, #{remark})
+    </insert>
+
+    <!-- 查询邮件配置 -->
+   <select id="queryPushMailConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="mailConfig">
+       SELECT * FROM t_push_mail_config t
+       WHERE 1 = 1 AND enabled = 1
+       <if test="source != NULL and source != ''">
+           AND t.source = #{source}
+       </if>
+       <if test="enabled != NULL and enabled != ''">
+           AND t.enabled = #{enabled}
+       </if>
+       order by t.source
+       <if test="limit != NULL">
+           LIMIT #{limit}
+       </if>
+       <if test="pos != NULL and pos != ''">
+           OFFSET #{pos}
+       </if>
+   </select>
+
+    <!-- 查询邮件配置总条数 -->
+    <select id="queryPushMailConfigCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_mail_config t
+        WHERE 1 = 1 AND enabled = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND t.enabled = #{enabled}
+        </if>
+    </select>
+
+    <!-- 查询短信发送记录 -->
+    <select id="queryPushMailRecord" parameterType="com.alibaba.fastjson.JSONObject" resultMap="pushMailRecord">
+        SELECT t.*,
+        c.smtp_host,
+        c.source
+        FROM t_push_mail_record t, t_push_mail_config c
+        WHERE 1 = 1 AND t.from_mail = c.from_mail
+
+        <if test="source != NULL and source != ''">
+            AND c.source = #{source}
+        </if>
+        <if test="to_mail != NULL and to_mail != ''">
+            AND t.to_mail = #{to_mail}
+        </if>
+        <if test="subject != NULL and subject != ''">
+            AND t.subject LIKE CONCAT('%', #{subject}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+
+    </select>
+
+    <!-- 查询短信发送记录总条数 -->
+    <select id="queryPushMailRecordCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_mail_record t, t_push_mail_config c
+        WHERE 1 = 1 AND t.from_mail = c.from_mail
+        <if test="source != NULL and source != ''">
+            AND c.source = #{source}
+        </if>
+        <if test="to_mail != NULL and to_mail != ''">
+            AND t.to_mail = #{to_mail}
+        </if>
+        <if test="subject != NULL and subject != ''">
+            AND t.subject LIKE CONCAT('%', #{subject}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+    </select>
+</mapper>

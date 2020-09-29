@@ -1,0 +1,226 @@
+package cn.gnw.push.provider.service;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.UniqueKeyUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.PushUtil;
+import cn.gnw.push.api.utils.mipush.MiPushUtil;
+import cn.gnw.push.provider.config.MiConfig;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.annotation.Resource;
+import java.util.*;
+
+/**
+ * 小米推送
+ *
+ * @author: chengzd
+ * @mail
+ * @date: 2019-07-03 11:18
+ */
+@Service
+public class MiPushService extends BaseBS {
+
+    @Resource
+    private MiConfig miConfig ;
+
+    /**
+     * 小米推送入队列
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject send(JSONObject params){
+        JSONObject result = new JSONObject();
+
+//        JSONObject JMsg = JPushClientUtil.getInstance().toPushJgInQueue(params);
+        JSONObject jgMsg = PushUtil.getInstance().toPushInQueue(Constants.PUSH_TYPE_MI_SEND, params);
+        getLogger().info("小米推送信息入队列：" + jgMsg);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 小米推送
+     * 推送到用户时保存推送记录
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendXiaoMi (JSONObject params) {
+        JSONObject result = new JSONObject();
+        String pushType = params.getString("push_type");
+        String title = params.getString("title");
+        String content = params.getString("content");
+        String description = params.getString("description");
+        String source = params.getString("source");
+        String platform = params.getString("platform");
+        List<String> alias = (List<String>)params.get("alias");
+        List<String> accounts = (List<String>) params.get("accounts");
+        List<String> topics = (List<String>) params.get("topics");
+        List<String> regIds = (List<String>) params.get("reg_ids");
+        Map<String, String> extra = (Map<String, String>)params.get("extra");
+        String remark = params.getString("remark");
+
+        String androidAppKey = params.getString("android_app_key");
+        String androidAppSecret = params.getString("android_app_secret");
+        String androidPackage = params.getString("android_package");
+        String iosAppKey = params.getString("ios_app_key");
+        String iosAppSecret = params.getString("ios_app_secret");
+
+        String appKey = androidAppKey;
+        if(Constants.PLATFORM_IOS.equals(platform)){
+            appKey = iosAppKey;
+        }
+        String extras = "";
+        if(extra != null) {
+            extras = extra.toString();
+        }
+
+
+        MiPushUtil miPushUtil = new MiPushUtil(androidPackage, androidAppSecret, iosAppSecret, miConfig.getSandbox(), miConfig.getSandRetries());
+
+        if (alias != null) {
+            miPushUtil.sendMessageToAlias(title, content, description, alias, platform, Integer.parseInt(pushType), extra);
+        } else if (accounts != null) {
+            miPushUtil.sendMessageToAccounts(title, content, description, accounts, platform, Integer.parseInt(pushType), extra);
+        } else if (topics != null) {
+            miPushUtil.sendMessageToTopics(title, content, description, topics, platform, Integer.parseInt(pushType), extra);
+        } else if (regIds != null) {
+
+            String status = "";
+            List<Map> jgList = new ArrayList<Map>();
+            Map<String, String> jgParams = null;
+            if (regIds.size() > 0) {
+                for (int i = 0; i < regIds.size(); i++) {
+                    jgParams = new HashMap();
+                    String recordId = UniqueKeyUtil.getKey(new Date());
+                    JSONObject sendResult = miPushUtil.sendMessage(title, content, description, regIds.get(i), platform, Integer.parseInt(pushType), extra);
+                    jgParams.put("record_id", recordId);
+                    jgParams.put("app_key", appKey);
+                    jgParams.put("regist_id", regIds.get(i));
+                    jgParams.put("title", title);
+                    jgParams.put("content", content);
+                    jgParams.put("description", description);
+                    jgParams.put("source", source);
+                    jgParams.put("platform", platform);
+                    jgParams.put("push_type", pushType);
+                    jgParams.put("extra", extras);
+                    jgParams.put("remark", remark);
+                    jgParams.put("result", sendResult.getString("message"));
+                    jgParams.put("msg_id", sendResult.getString("msg_id"));
+                    if (sendResult.getIntValue("status") != 0) {
+                        status = "1";
+                    } else {
+                        status = "0";
+                    }
+                    jgParams.put("status", status);
+                    jgList.add(jgParams);
+                    System.out.println("sendResult>>" + sendResult);
+                }
+
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                simpleMybatisDao.insert("push.mi.addPushMiRecordList", jgList);
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 小米设备绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject bindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        String bindRecordId = UniqueKeyUtil.getKey(new Date());
+        params.put("bind_record_id", bindRecordId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.mi.addBindRecord", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 小米设备修改绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject updateBindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.mi.updateBindRegId", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 小米设备解除绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject unbind (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        params.put("status", "2");
+        simpleMybatisDao.update("push.mi.unbind", params);
+
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 消息回执
+     * @param listParams
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject notify(List<Map<String, String>> listParams) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.update("push.mi.updateReachReceipt", listParams);
+
+        result.put("status", 0);
+        result.put("message", "success");
+
+        return result;
+    }
+
+    /**
+     * 增加小米配置
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject addConfig(JSONObject params){
+        JSONObject result = new JSONObject();
+        String configId = UniqueKeyUtil.getKey(new Date());
+
+        params.put("mi_config_id", configId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.mi.addPushMiConfig", params);
+        if(count > 0) {
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "xiaomi config insert error");
+        }
+        return result;
+    }
+}

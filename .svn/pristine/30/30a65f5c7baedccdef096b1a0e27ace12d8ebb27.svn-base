@@ -1,0 +1,80 @@
+package cn.gnw.push.iosmdm.provider.service;
+
+import cn.gnw.push.api.entity.iosmdm.ApnsConfig;
+import cn.gnw.push.api.entity.iosmdm.ApnsConstants;
+import cn.gnw.push.api.entity.iosmdm.Feedback;
+import cn.gnw.push.api.utils.ApnsTools;
+
+import javax.net.SocketFactory;
+import java.io.InputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-09-30 15:47
+ */
+public class ApnsFeedbackConnection {
+    private static int READ_TIMEOUT = 10000; // 10s
+    private static int DATA_LENGTH = 38;
+    private ApnsConfig config;
+    private SocketFactory factory;
+    public ApnsFeedbackConnection(ApnsConfig config, SocketFactory factory) {
+        this.config = config;
+        this.factory = factory;
+    }
+
+    public List<Feedback> getFeedbacks() {
+        List<Feedback> list = null;
+        Socket socket = null;
+        try {
+            String host = ApnsConstants.FEEDBACK_HOST_PRODUCTION_ENV;
+            int port = ApnsConstants.FEEDBACK_PORT_PRODUCTION_ENV;
+            if (config.isDevEnv()) {
+                host = ApnsConstants.FEEDBACK_HOST_DEVELOPMENT_ENV;
+                port = ApnsConstants.FEEDBACK_PORT_DEVELOPMENT_ENV;
+            }
+            socket = factory.createSocket(host, port);
+            socket.setSoTimeout(READ_TIMEOUT);
+            InputStream is = socket.getInputStream();
+            while (true) {
+                byte[] bytes = new byte[DATA_LENGTH];
+                int size = is.read(bytes);
+                if (size == DATA_LENGTH) {
+                    if (list == null) {
+                        list = new ArrayList<Feedback>();
+                    }
+                    /**
+                     * see The Feedback Service chapter
+                     * https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/CommunicatingWIthAPS.html
+                     *
+                     */
+                    byte[] tokenByte = new byte[32];
+                    System.arraycopy(bytes, 6, tokenByte, 0, 32);
+                    String token = ApnsTools.encodeHex(tokenByte).toLowerCase();
+                    long time = ApnsTools.parse4ByteInt(bytes[0], bytes[1], bytes[2], bytes[3]);
+                    Feedback feedback = new Feedback();
+                    feedback.setTime(time);
+                    feedback.setToken(token);
+                    list.add(feedback);
+                } else {
+                    break;
+                }
+            }
+            is.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (Exception e2) {
+                    e2.printStackTrace();
+                }
+            }
+        }
+        return list;
+    }
+}

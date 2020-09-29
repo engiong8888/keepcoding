@@ -1,0 +1,224 @@
+$(function(){
+	/**
+	 * 定义一个验证器
+	 */
+	$.Validator = function() {
+		
+	};
+
+	/**
+	 * 验证表单
+	 * @param param 携带参数(exist)
+	 * param.exist为true，验证表单所有填写项的完整性和合法性
+	 * param.exist为false，只验证有输入值的填写项的合法性，不验证完整性(页面暂存情况）
+	 * 标签使用格式示例 rule="{required: 'required'}" msg="{required: '名称不能为空'}"
+	 * @param target 验证对象，没有传入这个参数则默认验证对象为整个页面
+	 */
+	$.Validator.form = function(param, target) {
+		var flag = true;
+		var exist = param.exist == null ? true : param.exist;
+		var validTarget = typeof target == "undefined" ? $("[rule]") : target.find("[rule]");
+		$.each(validTarget, function(i, n) {
+			var rules = eval('(' + $(n).attr("rule") + ')');
+			var msgs = eval('(' + $(n).attr("msg") + ')');
+			for(e in rules){
+				if (e == 'required') {
+					if(exist) {
+						if ($(n).val() == '') {
+							new Popover({object: $(n), content: msgs[e]}).show();
+							flag = false;
+						    return flag;
+						}
+					}
+				} else {
+					if(exist) {
+						if (!($(n).val() != '' && $.Validator.validate({data: $(n).val(), rule: e}))) {
+							new Popover({object: $(n), content: msgs[e]}).show();
+							flag = false;
+						    return flag;
+						}
+					} else {
+						if ($(n).val() != '') {
+							if(!$.Validator.validate({data: $(n).val(), rule: e})) {
+								new Popover({object: $(n), content: msgs[e]}).show();
+								flag = false;
+							    return flag;
+							}
+						}
+					}
+				}
+			}
+		 });
+	    return flag;
+	};
+	
+	/**
+	 * 正则表达验证、自定义函数验证
+	 */
+	$.Validator.validate = function(param) {
+		/**
+		 * 定义默认的验证规则
+		 * required-不为空
+		 * num-数字，phone-电话号码（包括手机和固话），cell-手机号码，money-金额验证（只能输入数字和小数点）
+		 * mail-邮件，idno-身份证号，cn-中文，url-url地址，date-日期（yyyy-MM-dd）
+		 * sdtime-短日期时间（yyyy-MM-dd HH:mm），ldtime-长日期时间（yyyy-MM-dd HH:mm:ss），dtime-时间时间（HH:mm:ss），stime-时间时间（HH:mm）
+		 * postcode-邮编，nonNegativeRealNumber 非负实数，pnum 正整数
+		 * nonNegativeRealNumber1-非负实数和只能一位小数，nonNegativeRealNumber2-非负实数和只能两位小数
+		 * plateNo-中国车牌，loginID-登录账号（由英文或数字组成），email-邮箱地址
+		 */
+		var rules = {
+			num : "^[0-9]*$",
+			money:"^(([0-9]+\.[0-9])|[0-9]*)$",
+			postcode : "^[1-9][0-9]{5}$",
+			phone : "(\\d{5})|(\\d{6})|(\\d{11})|^((\\d{7,8})|(\\d{4}|\\d{3})-(\\d{7,8})|(\\d{4}|\\d{3})-(\\d{7,8})-(\\d{4}|\\d{3}|\\d{2}|\\d{1})|(\\d{7,8})-(\\d{4}|\\d{3}|\\d{2}|\\d{1}))$",
+			ip: "^((\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5]|[*])\\.){3}(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5]|[*])$",
+			port:"^[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]{1}|6553[0-5]$",
+			ipPort:"(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9]):\d{0,5}$",
+			cell : "^1(3[0-9]|5[0-35-9]|7[0]|8[01235-9])\\d{8}$",
+			mail: "^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$",
+			idno : "((11|12|13|14|15|21|22|23|31|32|33|34|35|36|37|41|42|43|44|45|46|50|51|52|53|54|61|62|63|64|65|71|81|82|91)\\d{4})((((19|20)(([02468][048])|([13579][26]))0229))|((20[0-9][0-9])|(19[0-9][0-9]))((((0[1-9])|(1[0-2]))((0[1-9])|(1\\d)|(2[0-8])))|((((0[1,3-9])|(1[0-2]))(29|30))|(((0[13578])|(1[02]))31))))((\\d{3}(x|X))|(\\d{4}))",
+			cn : "^([\u4E00-\uFA29]|[\uE7C7-\uE7F3])*$",
+			url : "^http[s]?://[\\w\\.\\-]+$",
+			date : "^(?:(?!0000)[0-9]{4}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1[0-9]|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[48]|[2468][048]|[13579][26])00)-02-29)$",
+			sdtime : "^(?:(?!0000)[0-9]{4}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1[0-9]|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[48]|[2468][048]|[13579][26])00)-02-29)\\s+([01][0-9]|2[0-3]):[0-5][0-9]$",
+			ldtime : "^(?:(?!0000)[0-9]{4}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1[0-9]|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[48]|[2468][048]|[13579][26])00)-02-29)\\s+([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+			dtime : "^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$",
+			stime : "^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$",
+			nonNegativeRealNumber: "^[+]{0,1}(\\d+)$|^[+]{0,1}(\\d+\\.\\d+)$",
+			pnum: "^\\d+$",
+			nonNegativeRealNumber1: "^[+]{0,1}(\\d+)$|^[+]{0,1}(\\d+(\\.\\d{1}))?$",
+			nonNegativeRealNumber2: "^[+]{0,1}(\\d+)$|^[+]{0,1}(\\d+(\\.\\d{1,2}))?$",
+			plateNo: "^[\u4e00-\u9fa5]{1}[A-Z]{1}[A-Z_0-9]{5}$",
+			loginID: "^[A-Za-z0-9]+$",
+			email: "^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$"
+		};
+		var flag = false;
+		if (param.rule in rules) {
+			flag = new RegExp(rules[param.rule]).test(param.data);
+		} else {
+			flag = eval(param.rule + '()');
+		}
+		return flag;
+	};
+	
+	/**
+	 * 根据函数名判断函数是否存在
+	 */
+	$.Validator.isExist = function(funcName) {
+		try {
+			if(typeof(eval(funcName))=="function") {
+				return true;
+			}
+		} catch(e) {}
+		return false;
+	};
+	
+	/**
+	 * 为jquery扩展一个doValidation方法
+	 */
+	$.extend({
+		doValidation: function(param, target) {
+			return $.Validator.form(param, target);
+		}
+	});
+});
+
+/**
+ * @param config
+ * @return
+ */
+var Toast = function(config) {
+	// 上下文
+	this.context = config.context == null ? $('body') : config.context;
+	// 显示内容
+	this.msg = config.msg;
+	// 持续时间
+	this.time = config.time == null ? 3000 : config.time;
+	// 距容器左边的距离
+	this.left = config.left;
+	// 距容器上方的距离
+	this.top = config.top;
+	this.init();
+};
+var msgEntity;
+Toast.prototype = {
+	// 初始化显示的位置内容等
+	init : function() {
+		$("#toast").remove();
+		// 设置消息体
+		var msgDIV = new Array();
+		msgDIV.push('<div id="toast">');
+		msgDIV.push('<div class="t_left"></div>');
+		msgDIV.push('<div class="t_bg">');
+		msgDIV.push('<span>' + this.msg + '</span>');
+		msgDIV.push('</div>');
+		msgDIV.push('<div class="t_right"></div>');
+		msgDIV.push('</div>');
+		msgEntity = $(msgDIV.join('')).appendTo(this.context);
+		// 设置消息样式
+		var left = this.left == null ? this.context.width() / 2 - msgEntity.find('span').width() / 2 - 40 : this.left;
+		var top = this.top == null ? document.documentElement.clientHeight * 0.7 : this.top;
+		msgEntity.css({position : 'absolute', top : top, 'z-index' : '9999', left : left, 'font-size' : '18px', padding : '10px',margin : '10px'});
+		msgEntity.hide();
+	},
+	show : function() { // 显示动画
+		msgEntity.fadeIn(this.time / 4);
+		msgEntity.fadeOut(this.time / 2);
+	}
+};
+
+/**
+ * @param config
+ * @return
+ */
+var Popover = function(config) {
+	// 元素对象
+	this.object = config.object;
+	// 是否开启 CSS 褪色过渡效果
+	this.animation = config.animation == null ? 'true' : config.animation;
+	// 是否允许内容为HTML代码，为false则将代码以文本方式显示
+	this.html = config.html == null ? 'true' : config.html;
+	// 弹出提示相对于被选中元素的位置，可以使top | bottom | right | left 四个方向
+	this.placement = config.placement == null ? 'bottom' : config.placement;
+	// 如果提供了一个选择器，弹出框对象将被委派到指定的目标
+	this.selector = config.selector == null ? 'false' : config.selector;
+	// 设置标题
+	this.title = config.title == null ? '' : config.title;
+	// 显示内容
+	this.content = config.content == null ? 'unknown error' : config.content;
+	// 定义如何触发弹出框： click| hover | focus | manual。您可以传递多个触发器，每个触发器之间用空格分隔
+	this.trigger = config.trigger == null ? 'focus' : config.trigger;
+	// 延迟显示和隐藏弹出框的毫秒数，对象结构为 delay: { show: 500, hide: 100 }
+	this.delay = config.delay == null ? '{ show: 500, hide: 100 }' : config.delay;
+	// 持续时间
+	this.time = config.time == null ? 2000 : config.time;
+	// 向指定元素追加弹出框
+	this.container = config.container == null ? 'false' : config.container;
+	this.init();
+};
+
+var objEntity;
+Popover.prototype = {
+	init : function() {
+		objEntity = this.object;
+		var spanWidth = eval(this.content.length * 14) > 200 ? 200 : eval(this.content.length * 14);
+		this.object.popover('destroy');
+		this.object.popover({
+			animation: this.animation,
+			html: this.html,
+			placement: this.placement,
+			trigger: this.trigger,
+			title: this.title,
+			content: '<span style="font-size: 14px; color: red; text-align:center; width:' + spanWidth + 'px">' + this.content + '</span>',
+			delay: this.delay
+		});
+	},
+	show : function() {
+		this.object.focus();
+		setTimeout(this.destroy, this.time);
+	},
+	destroy : function() {
+		$('.popover').remove();
+		objEntity.popover('destroy');
+	}
+};

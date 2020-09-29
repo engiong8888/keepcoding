@@ -1,0 +1,246 @@
+package cn.gnw.push.provider.service;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.pub.base.utils.UniqueKeyUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.PushUtil;
+import cn.gnw.push.api.utils.huaweipush.HuweiPushUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.util.*;
+
+/**
+ * 华为推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-31 14:42
+ */
+@Service
+public class HuaweiPushService extends BaseBS {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+
+    /**
+     * 华为推送
+     * 加入队列
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject send(JSONObject params){
+        JSONObject result = new JSONObject();
+
+        JSONObject JMsg = PushUtil.getInstance().toPushInQueue(Constants.PUSH_TYPE_HUAWEI_SEND, params);
+        getLogger().info("华为推送信息入队列：" + JMsg);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 华为推送-推送
+     * 保存记录
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendHuawei (JSONObject params) throws IOException {
+        JSONObject result = new JSONObject();
+        List<String> deviceTokens = (List<String>)params.get("deviceTokens");
+
+        String title = params.getString("title");
+        String content = params.getString("content");
+        String msgType = params.getString("msgType");
+        String actionType = params.getString("actionType");
+        String paramIntent = params.getString("paramIntent");
+        String paramUrl = params.getString("paramUrl");
+        String biTag = params.getString("biTag");
+        Object customize = params.get("customize");
+        String appId = params.getString("app_id");
+        String appSecret = params.getString("app_secret");
+        String appPkg = params.getString("app_pkg");
+        JSONArray devTokenArray = JSONArray.parseArray(JSON.toJSONString(deviceTokens));
+        JSONArray cusArray = null;
+        if(customize != null) {
+            cusArray = JSONArray.parseArray(JSONObject.toJSONString(customize));
+        }
+        HuweiPushUtil huaweiPushUtil = new HuweiPushUtil(appId, appSecret);
+        String authToken = huaweiPushUtil.getAccessToken();
+        JSONObject sendResult = huaweiPushUtil.sendMessage(devTokenArray, title, content, actionType, paramIntent, paramUrl, msgType, biTag, cusArray, appPkg, authToken);
+
+        logger.info("华为推送返回结果：{} " + sendResult.toJSONString());
+        String status = "";
+        String requestId = sendResult.getString("requestId");
+        List<String> illegalList = new ArrayList<String>();
+        if("80000000".equals(sendResult.getString("code"))) {
+            status = "1";
+            result.put("status", "0");
+            result.put("message", "success");
+        }else if("80100000".equals(sendResult.getString("code"))) {
+            JSONObject obj = sendResult.getJSONObject("msg");
+            illegalList = (List<String>)obj.get("illegal_tokens");
+
+        }else {
+            status = "0";
+            result.put("status", "-1");
+            result.put("message", "error");
+            result.put("data", sendResult.toJSONString());
+        }
+
+        List<Map> huaweiList = new ArrayList<Map>();
+        Map<String, Object> hParams = null;
+        if (deviceTokens.size() > 0) {
+            JSONObject spliceResult = null;
+            for (int i = 0; i < deviceTokens.size(); i++) {
+                spliceResult =  new JSONObject();
+                hParams = new HashMap<String, Object>();
+                String recordId = UniqueKeyUtil.getKey(new Date());
+                hParams.put("record_id", recordId);
+                hParams.put("app_id", appId);
+                hParams.put("title", title);
+                hParams.put("content", content);
+                hParams.put("msg_type", msgType);
+                hParams.put("regist_id", deviceTokens.get(i));
+                hParams.put("platform", Constants.PLATFORM_ANDROID);
+                if(illegalList.size() >0){
+
+                    if(illegalList.contains(deviceTokens.get(i))){
+                        spliceResult.put("msg", "illegal_tokens");
+                        spliceResult.put("code", "80100000");
+                        spliceResult.put("requestId", requestId);
+                        status = "0";
+                    }else{
+                        spliceResult.put("msg", "Success");
+                        spliceResult.put("code", "80000000");
+                        spliceResult.put("requestId", requestId);
+                        status = "1";
+                    }
+                    hParams.put("result", spliceResult.toJSONString());
+                    hParams.put("status", status);
+                }else {
+                    hParams.put("result", sendResult.toJSONString());
+                    hParams.put("status", status);
+                }
+
+                hParams.put("request_id", requestId);
+                huaweiList.add(hParams);
+            }
+
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            simpleMybatisDao.insert("push.huawei.addPushHuaweiRecordList", huaweiList);
+        }
+        return result;
+    }
+
+    /**
+     * 华为设备绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject bindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        String bindRecordId = UniqueKeyUtil.getKey(new Date());
+        params.put("bind_record_id", bindRecordId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.huawei.addBindRecord", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 华为设备修改绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject updateHuaweiBindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.huawei.updateHuaweiBindRegId", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 华为设备解除绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject unbind (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        params.put("status", "2");
+        simpleMybatisDao.update("push.huawei.unbind", params);
+
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 推送回执
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject pushNotify (Map<String, Object> params) {
+        JSONObject result = new JSONObject();
+        List<Map<String, String>> statusList = (List<Map<String, String>>)params.get("statuses");
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.update("push.huawei.updateReachReceipt", statusList);
+
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 增加华为配置
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject addConfig(JSONObject params){
+        JSONObject result = new JSONObject();
+        String configId = UniqueKeyUtil.getKey(new Date());
+
+        params.put("config_id", configId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.huawei.addPushHuaweiConfig", params);
+        if(count > 0) {
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "huawei config insert error");
+        }
+        return result;
+    }
+
+    /*public static void main (String[] args){
+        String str = "[{\"session1\":\"test1\"}, {\"session2\":\"test2\"}]";
+
+        JSONArray array = JSONArray.parseArray(str);
+
+        System.out.println(array.toJSONString());
+    }*/
+}

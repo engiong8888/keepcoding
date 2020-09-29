@@ -1,0 +1,166 @@
+package cn.gnw.push.iosmdm.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.utils.IosMdmUtils;
+import cn.gnw.push.iosmdm.consumer.interfaces.PushIosMdmServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+/**
+ * 设备指令操作
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-06 15:54
+ */
+@RestController
+@RequestMapping("/device")
+public class DeviceController {
+
+    private Log logger = LogFactory.getLog(MdmController.class);
+
+    private PushIosMdmServiceClient pushIosMdmserviceClient = SpringUtil.getBean(PushIosMdmServiceClient.class);
+
+    /**
+     * 锁屏
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/lock")
+    public String deviceLock(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.deviceLock(rParams);
+    }
+
+    /**
+     * 获取设备信息
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/info")
+    public String deviceInformation(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.deviceInformation(rParams);
+    }
+
+    /**
+     * 获取设备已经安装的app信息
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/apps")
+    public String deviceInstalledAppsList(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.deviceInstalledAppsList(rParams);
+    }
+
+    /**
+     * 设备安装APP
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install")
+    public String deviceInstallApplication(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.deviceInstallApplication(rParams);
+    }
+
+    /**
+     * 设备卸载APP
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/remove")
+    public String deviceRemoveApplication(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.deviceRemoveApplication(rParams);
+    }
+
+    /**
+     * 受限系统软件
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/restriction/system/app")
+    public String restrictionSystemApplication(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.restrictionSystemApplication(rParams);
+    }
+
+    /**
+     * 安装过滤网址url
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install/filter/url")
+    public String installFilterUrl(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.installFilterUrl(rParams);
+    }
+
+    /**
+     * 安装黑名单软件
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install/blacklist/apps")
+    public String installBlackListApps(@RequestBody JSONObject rParams){
+        return pushIosMdmserviceClient.installBlacklistApps(rParams);
+    }
+
+    /**
+     * 发送指令
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send/command")
+    public String sendCommand(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        result.put("status",-1);
+        result.put("message","无效指令");
+        logger.info("接收到发送指令参数信息：" + rParams.toJSONString());
+        String commandNoStr = rParams.getString("command_no");
+        String commandNo = commandNoStr.substring(1);
+        String recordId = rParams.getString("record_id");
+        String createTime = rParams.getString("create_time");
+        JSONObject data = rParams.getJSONObject("data");
+        JSONObject params = new JSONObject();
+        String deviceIdFromDc = rParams.getString("device_id");
+        ShardedJedisPool shardedJedisPool = SpringUtil.getBean("shardedJedisPool", ShardedJedisPool.class);
+        ShardedJedis shardedJedis = shardedJedisPool.getResource();
+        String deviceId = shardedJedis.get(deviceIdFromDc);
+        params.put("device_id",deviceId);
+        params.put("source",rParams.getString("source"));
+        if(null != data){
+            params.put("ctype",data.getString("ctype"));
+            params.put("identifier",data.getString("identifier"));
+            params.put("cvalue",data.getString("cvalue"));
+            params.put("call_back",data.getString("call_back"));
+        }
+        JSONObject attach = new JSONObject();
+        attach.put("recordId",recordId);
+        attach.put("createTime",createTime);
+        params.put("attach",attach.toJSONString());
+        logger.info("params：" + params.toJSONString());
+        switch (commandNo){
+            case IosMdmUtils.LOCK : return pushIosMdmserviceClient.deviceLock(params);
+            case IosMdmUtils.INSTALL_APP : return pushIosMdmserviceClient.deviceInstallApplication(params);
+            case IosMdmUtils.REMOVE_APP : return pushIosMdmserviceClient.deviceRemoveApplication(params);
+            case IosMdmUtils.SYSTEM_APP : return pushIosMdmserviceClient.restrictionSystemApplication(params);
+            case IosMdmUtils.APP_BLACKLIST : return pushIosMdmserviceClient.installBlacklistApps(params);
+            case IosMdmUtils.URL_FILTER : return pushIosMdmserviceClient.installFilterUrl(params);
+            case IosMdmUtils.DEVICE_INFO : return pushIosMdmserviceClient.deviceInformation(params);
+            case IosMdmUtils.APPS_LIST : return pushIosMdmserviceClient.deviceInstalledAppsList(params);
+            default: return result.toJSONString();
+        }
+    }
+}

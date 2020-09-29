@@ -1,0 +1,628 @@
+package cn.gnw.push.api.utils;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * reids存储工具类
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-28 9:27
+ */
+public class RedisUtil {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    ShardedJedisPool shardedJedisPool = SpringUtil.getBean("shardedJedisPool", ShardedJedisPool.class);
+
+    private RedisUtil() {}
+
+    private static class StartedUtilManageHolder {
+        private static RedisUtil instance = new RedisUtil();
+    }
+    public static RedisUtil getInstance() {
+        return StartedUtilManageHolder.instance;
+    }
+
+    /**
+     * 发送短信后手机号存入redis
+     * 在设置的时间内不可重复发送
+     * @param phone
+     * @param timeOut
+     * @return
+     */
+    public void setSmsPhoneToRedis(String phone, int timeOut) {
+
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+
+            StringBuffer key = new StringBuffer(Constants.REDIS_SMS_SEND_PHONE)
+                    .append(":").append(phone);
+            shardedJedis.set(key.toString(), phone);
+            shardedJedis.expire(key.toString(), timeOut);
+
+            logger.info("发送成功手机设置频率：" + phone + " 限制频率时间 " + timeOut);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+    }
+
+    /**
+     * 设置启动配置到redis：邮件、短信、华为、小米等
+     * @param key
+     * @param value
+     */
+    public void setConfigToRedis(String key, JSONObject value){
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+            shardedJedis.lpush(sbKey.toString(), value.toJSONString());
+//            logger.info(new StringBuffer("保存配置config [Redis][key]{").append(key)
+//                    .append("}[config]{").append(value).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+    }
+
+    /**
+     * 获取已发送短信手机redis缓存
+     * @param keyStr
+     * @return
+     */
+    public String getSmsPhoneFromRedis(String keyStr){
+        ShardedJedis shardedJedis = null;
+        String smsStr = null;
+        try {
+
+            shardedJedis = shardedJedisPool.getResource();
+            smsStr = shardedJedis.get(keyStr);
+
+            logger.info(new StringBuffer("获取手机 [Redis][key]{").append(keyStr)
+                    .append("}[config]{").append(smsStr).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return smsStr;
+    }
+
+    /**
+     * 获取邮件、短信redis缓存
+     * @param keyStr
+     * @return
+     */
+    public JSONObject getConfigFromRedis(String source, String keyStr){
+        JSONObject result = new JSONObject();
+
+        ShardedJedis shardedJedis = null;
+        List<String> configList = null;
+        try {
+
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(keyStr);
+            shardedJedis = shardedJedisPool.getResource();
+            configList = shardedJedis.lrange(sbKey.toString(), 0, -1);
+            logger.info("redis data: {} " + configList.toString());
+            JSONObject jobject = null;
+            if(configList != null) {
+
+                for(int i = 0; i<configList.size(); i++){
+                    jobject = JSONObject.parseObject(configList.get(i));
+                    if(source.equals(jobject.getString("source"))){
+                        break;
+                    } else {
+                        jobject = null;
+                    }
+                }
+                if(jobject != null) {
+                    result.put("status", 0);
+                    result.put("data", jobject);
+                } else {
+                    result.put("status", -1);
+                    result.put("data", "config is null");
+                }
+
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取配置信息缓存，缓存超时！");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+
+            result.put("status", -1);
+            result.put("message", "获取redis配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取短信redis缓存
+     * @param platform
+     * @param source
+     * @param keyStr
+     * @return
+     */
+    public JSONObject getSmsConfigFromRedis(String platform, String source, String keyStr){
+        JSONObject result = new JSONObject();
+
+        ShardedJedis shardedJedis = null;
+        List<String> configList = null;
+        try {
+
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(keyStr);
+            shardedJedis = shardedJedisPool.getResource();
+            configList = shardedJedis.lrange(sbKey.toString(), 0, -1);
+            logger.info("redis data: {} " + configList.toString());
+            JSONObject jobject = null;
+            if(configList != null) {
+
+                for(int i = 0; i<configList.size(); i++){
+                    jobject = JSONObject.parseObject(configList.get(i));
+                    if(platform.equals(jobject.getString("sms_platform")) && source.equals(jobject.getString("source"))){
+                        break;
+                    } else {
+                        jobject = null;
+                    }
+                }
+                if(jobject != null) {
+                    result.put("status", 0);
+                    result.put("data", jobject);
+                } else {
+                    result.put("status", -1);
+                    result.put("data", "sms config is null");
+                }
+
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取短信配置信息缓存，缓存超时！");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+
+            result.put("status", -1);
+            result.put("message", "获取SMS配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取短信redis缓存
+     * @param keyStr
+     * @return
+     */
+//    public JSONObject getSmsConfigFromRedis(String source, String keyStr){
+//        JSONObject result = new JSONObject();
+//
+//        ShardedJedisPool shardedJedisPool = (ShardedJedisPool) SpringUtil.getBean("shardedJedisPool");
+//        ShardedJedis shardedJedis = null;
+//        List<String> configList = null;
+//        try {
+//
+//            shardedJedis = shardedJedisPool.getResource();
+//            configList = shardedJedis.lrange(keyStr, 0, -1);
+//            JSONObject jobject = null;
+//            if(configList != null) {
+//
+//                for(int i = 0; i<configList.size(); i++){
+//                    jobject = JSONObject.parseObject(configList.get(i));
+//                    if(source.equals(jobject.getString("sms_source"))){
+//                        break;
+//                    } else {
+//                        jobject = null;
+//                    }
+//                }
+//                if(jobject != null) {
+//                    result.put("status", 0);
+//                    result.put("data", jobject);
+//                } else {
+//                    result.put("status", -1);
+//                    result.put("data", "sms config is null");
+//                }
+//
+//            } else {
+//                result.put("status", -1);
+//                result.put("message", "获取配置信息缓存，缓存超时！");
+//            }
+//            logger.info(new StringBuffer("获取配置config [Redis][key]{").append(keyStr)
+//                    .append("}[config]{").append(jobject).append("}").toString());
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            logger.error(e.getMessage());
+//
+//            result.put("status", -1);
+//            result.put("message", "获取SMS配置信息出错！");
+//        } finally {
+//            if(shardedJedis != null) {
+//                shardedJedis.close();
+//            }
+//        }
+//        return result;
+//    }
+
+    /**
+     * 修改邮件redis缓存
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateMailConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> smsConfig = null;
+            JSONObject confirmMsg = null;
+
+            RedisUtil.getInstance().deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                smsConfig = configList.get(i);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("smtp_host", smsConfig.get("smtp_host"));
+                confirmMsg.put("from_mail", smsConfig.get("from_mail"));
+                confirmMsg.put("from_mail_pwd", smsConfig.get("from_mail_pwd"));
+                confirmMsg.put("source", smsConfig.get("source"));
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+                logger.info(new StringBuffer("更新邮件缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新Mail配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 修改短信redis缓存
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateSmsConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> smsConfig = null;
+            JSONObject confirmMsg = null;
+            this.deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                smsConfig = configList.get(i);
+
+                confirmMsg = new JSONObject();
+                confirmMsg.put("sms_tid", smsConfig.get("sms_tid"));
+                confirmMsg.put("sms_pwd", smsConfig.get("sms_pwd"));
+                confirmMsg.put("sms_platform", smsConfig.get("sms_platform"));
+                confirmMsg.put("source", smsConfig.get("sms_source"));
+                confirmMsg.put("remark", smsConfig.get("remark"));
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+                logger.info(new StringBuffer("更新短信缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新SMS配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 删除邮件、短信redis缓存
+     * @param key
+     */
+    public void deleteConfigToRedis(String key) {
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+            shardedJedis.del(sbKey.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+    }
+
+
+    /**
+     * vivo
+     * 更新redis缓存配置信息
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateVivoConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> vivoConfig = null;
+            JSONObject confirmMsg = null;
+            this.deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                vivoConfig = configList.get(i);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_id", vivoConfig.get("app_id"));
+                confirmMsg.put("app_key", vivoConfig.get("app_key"));
+                confirmMsg.put("app_secret", vivoConfig.get("app_secret"));
+                confirmMsg.put("source", vivoConfig.get("source"));
+                logger.info(new StringBuffer("更新vivo缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新vivo配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 华为
+     * 更新redis缓存配置信息
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateHuaweiConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> huaweiConfig = null;
+            JSONObject confirmMsg = null;
+            this.deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                huaweiConfig = configList.get(i);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_id", huaweiConfig.get("app_id"));
+                confirmMsg.put("app_secret", huaweiConfig.get("app_secret"));
+                confirmMsg.put("app_pkg", huaweiConfig.get("app_pkg"));
+                confirmMsg.put("source", huaweiConfig.get("source"));
+                logger.info(new StringBuffer("更新华为缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新华为配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 极光
+     * 更新redis缓存配置信息
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateJiguangConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> jgConfig = null;
+            JSONObject confirmMsg = null;
+            this.deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                jgConfig = configList.get(i);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("app_key", jgConfig.get("app_key"));
+                confirmMsg.put("master_secret", jgConfig.get("master_secret"));
+                confirmMsg.put("source", jgConfig.get("source"));
+                logger.info(new StringBuffer("更新极光缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新极光配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 小米
+     * 更新redis缓存配置信息
+     * @param key
+     * @param configList
+     * @return
+     */
+    public JSONObject updateMiConfigToRedis(String key, List<Map> configList) {
+
+        JSONObject result = new JSONObject();
+        ShardedJedis shardedJedis = null;
+        try {
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(key);
+            shardedJedis = shardedJedisPool.getResource();
+
+            Map<String, String> miConfig = null;
+            JSONObject confirmMsg = null;
+            this.deleteConfigToRedis(key);
+            for(int i = 0; i <configList.size(); i++){
+                miConfig = configList.get(i);
+                confirmMsg = new JSONObject();
+                confirmMsg.put("android_app_key", miConfig.get("android_app_key"));
+                confirmMsg.put("android_app_secret", miConfig.get("android_app_secret"));
+                confirmMsg.put("android_package", miConfig.get("android_package"));
+                confirmMsg.put("ios_app_key", miConfig.get("ios_app_key"));
+                confirmMsg.put("ios_app_secret", miConfig.get("ios_app_secret"));
+                confirmMsg.put("source", miConfig.get("source"));
+                logger.info(new StringBuffer("更新小米缓存配置config [Redis][key]{").append(sbKey.toString())
+                        .append("}[config]{").append(confirmMsg.toJSONString()).append("}").toString());
+                shardedJedis.lpush(sbKey.toString(), confirmMsg.toJSONString());
+
+            }
+
+            result.put("status", 0);
+            result.put("message", "success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+            result.put("status", -1);
+            result.put("message", "更新小米配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 根据redis key获取redis缓存
+     * @param redisKey sms_config、mail_config、jigunag_config、vivo_config、huawei_config、mi_config
+     * @return
+     */
+    public JSONObject getRedisConfigs(String redisKey){
+        JSONObject result = new JSONObject();
+
+        ShardedJedis shardedJedis = null;
+        List<String> configList = null;
+        try {
+
+            StringBuffer sbKey = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(redisKey);
+            shardedJedis = shardedJedisPool.getResource();
+            configList = shardedJedis.lrange(sbKey.toString(), 0, -1);
+            logger.info("redis data: {} " + configList.toString());
+            if(configList != null) {
+
+                JSONArray jarr = JSONArray.parseArray(configList.toString());
+                result.put("status", 0);
+                result.put("data", jarr);
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取reidis配置信息缓存，缓存超时！");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+
+            result.put("status", -1);
+            result.put("message", "获取redis配置信息出错！");
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return result;
+    }
+}

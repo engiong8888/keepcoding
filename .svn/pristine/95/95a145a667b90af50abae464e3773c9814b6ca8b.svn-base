@@ -1,0 +1,73 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * MDM推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-12-14 11:09
+ */
+@RestController
+@RequestMapping(value = "/push/mdm")
+public class MdmPushController extends BaseBS {
+
+    /**
+     * 获取IOS-MDM推送通知记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushIosMdmRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"source", "limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            try {
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+                if(!"-1".equals(limit)) {
+                    qParams.put("pos", rParams.getInteger("pos"));
+                    qParams.put("limit", Integer.valueOf(limit));
+                }
+                qParams.put("source", rParams.getString("source"));
+                qParams.put("device_id", rParams.getString("device_id"));
+                qParams.put("command", rParams.getString("command"));
+                getLogger().info(new StringBuffer("获取IOS-MDM推送通知记录，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Integer dataCount = simpleMybatisDao.selectOne("push.mdm.queryPushMdmRecordCount", qParams, Integer.class);
+                List<Map> mdmRecordList = simpleMybatisDao.selectList("push.mdm.queryPushMdmRecord", qParams, Map.class);
+                if (mdmRecordList == null) {
+                    result.put("status",-1);
+                    result.put("message","暂无IOS-MDM推送通知记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", mdmRecordList);
+                    result.put("total", dataCount);
+                    result.put("count", mdmRecordList.size());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取IOS-MDM推送通知记录失败：{}", e.toString());
+            }
+        }
+        getLogger().info(new StringBuffer("获取IOS-MDM推送通知记录，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+}

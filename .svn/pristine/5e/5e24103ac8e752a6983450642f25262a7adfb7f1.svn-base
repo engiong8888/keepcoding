@@ -1,0 +1,35 @@
+package cn.gnw.push.api.entity.vivopush;
+
+/**
+ * vivo接口api
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-29 9:37
+ */
+public class VivoApiConfig {
+
+    //测试
+    //public final static String VIVO_HOST_URL = "https://api-push-test.vivo.com.cn";
+
+    //正式
+    public final static String VIVO_HOST_URL = "https://api-push.vivo.com.cn";
+    //鉴权
+    public final static String TOKEN_AUTH = VIVO_HOST_URL + "/message/auth";
+
+    //单播推送
+    public final static String MESSAGE_SEND = VIVO_HOST_URL + "/message/send";
+
+    //保存群推消息公共体接口（配合接口批量推送）
+    public final static String MESSAGE_SAVE_LIST_PAYLOAD = VIVO_HOST_URL + "/message/saveListPayload";
+
+    //批量推送
+    public final static String MESSAGE_PUSH_TO_LIST = VIVO_HOST_URL + "/message/pushToList";
+
+    //全量发送接口，向所有设备
+    public final static String MESSAGE_ALL = VIVO_HOST_URL + "/message/all";
+
+    //获取消息推送的统计值接口
+    public final static String REPORT_STATISTICS = VIVO_HOST_URL + "/report/getStatistics?taskIds=TASK_IDS";
+
+    //消息回执
+}

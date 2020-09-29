@@ -1,0 +1,134 @@
+package cn.gnw.push.iosmdm.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.utils.IosMdmUtils;
+import cn.gnw.push.iosmdm.consumer.interfaces.PushIosMdmServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+/**
+ * MDM认证和指令回调操作
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-06 15:46
+ */
+@RestController
+@RequestMapping("/mdm")
+public class MdmController {
+
+    private Log logger = LogFactory.getLog(MdmController.class);
+
+    private PushIosMdmServiceClient pushIosMdmserviceClient = SpringUtil.getBean(PushIosMdmServiceClient.class);
+
+    /**
+     * 设备认证和注册功能
+     *
+     * @param request
+     */
+    @PutMapping("/checkin")
+    public void checkin(HttpServletRequest request, HttpServletResponse response){
+        JSONObject rParams = new JSONObject();
+        String device_id = request.getParameter("device_id") == null ? "" : request.getParameter("device_id");
+        String source = request.getParameter("source") == null ? "" : request.getParameter("source");
+        try {
+            String info = IosMdmUtils.inputStream2String(request.getInputStream());
+            rParams.put("device_id",device_id);
+            rParams.put("source",source);
+            rParams.put("info",info);
+            String resultStr = pushIosMdmserviceClient.checkin(rParams);
+            JSONObject object = JSONObject.parseObject(resultStr);
+            int status = object.getIntValue("status");
+            if(status != -1){
+                JSONObject jsonObject = JSONObject.parseObject(resultStr);
+                if(jsonObject != null && jsonObject.size() > 0){
+                    String infoStr = jsonObject.getString("info");
+                    if(infoStr.contains(IosMdmUtils.Authenticate)){
+                        /**返回一个空的pList格式的文件**/
+                        String blankPList = IosMdmUtils.getBlankPList();
+                        logger.info("Server->Device:\n" + blankPList);
+                        response.setHeader("content-type", "application/xml;charset=UTF-8");
+                        response.setCharacterEncoding("UTF-8");
+                        String configTitle = "MDMApp_EraseDevice";
+                        response.setHeader("Content-Disposition", "attachment; filename=" + configTitle + ".plist");
+                        try {
+                            PrintWriter sos = response.getWriter();
+                            logger.info("-------------------Authenticate end---------------");
+                            sos.write(blankPList);
+                            sos.flush();
+                            sos.close();
+                        }catch (Exception e){
+                            logger.error("写出响应异常：",e);
+                        }
+                    }else if(info.contains(IosMdmUtils.TokenUpdate)){
+                        /**空返回**/
+                        logger.info("Server->Device:\n The HTTP state 200, the content is empty");
+                        logger.info("-------------------TokenUpdate end---------------");
+                        response.setContentType("text/plain;charset=UTF-8");
+                        response.setCharacterEncoding("UTF-8");
+                        response.setHeader("Cache-Control", "no-cache");
+                        PrintWriter out;
+                        try {
+                            out = response.getWriter();
+                            out.print("");
+                        } catch (IOException e) {
+                            logger.error("响应写入异常",e);
+                        }
+                    }else if(info.contains(IosMdmUtils.CheckOut)){
+
+                    }
+                }
+            }
+        }catch (Exception e){
+            logger.error("流转换异常：",e);
+        }
+    }
+
+    /**
+     * 操作状态回执
+     *
+     * @param request
+     */
+    @PutMapping("/server")
+    public void server(HttpServletRequest request, HttpServletResponse response){
+        JSONObject rParams = new JSONObject();
+        try {
+            String device_id = request.getParameter("device_id") == null ? "" : request.getParameter("device_id");
+            String source = request.getParameter("source") == null ? "" : request.getParameter("source");
+            String info = IosMdmUtils.inputStream2String(request.getInputStream());
+            rParams.put("device_id",device_id);
+            rParams.put("source",source);
+            rParams.put("info",info);
+            String result = pushIosMdmserviceClient.server(rParams);
+            JSONObject jsonObject = JSONObject.parseObject(result);
+            int status = jsonObject.getIntValue("status");
+            if(status == 0) {
+                String configTitle = jsonObject.getString("configTitle");
+                String commandString = jsonObject.getString("commandString");
+                if(!StringUtil.isBlank(commandString)){
+                    logger.info("Server->Device:\n" + commandString);
+                    response.setHeader("content-type", "application/xml;charset=UTF-8");
+                    response.setCharacterEncoding("UTF-8");
+                    response.setHeader("Content-Disposition", "attachment; filename=" + configTitle + ".plist");
+                    PrintWriter sos = response.getWriter();
+                    logger.info("-------------------" + configTitle + "End---------------");
+                    sos.write(commandString);
+                    sos.flush();
+                    sos.close();
+                }
+            }
+        }catch (IOException e){
+            logger.error("写出响应异常：",e);
+        }
+    }
+}

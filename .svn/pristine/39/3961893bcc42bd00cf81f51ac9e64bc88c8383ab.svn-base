@@ -1,0 +1,191 @@
+package cn.gnw.push.consumer.fallback;
+
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Component;
+
+/**
+ * 推送失败降级处理
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-17 11:25
+ */
+@Component
+public class PushServiceClientFallback implements PushServiceClient {
+
+    private final JSONObject resultJson = new JSONObject();
+    public PushServiceClientFallback() {
+        resultJson.put("status", -1);
+        resultJson.put("message", "请求失败，请稍后再试");
+    }
+
+    @Override
+    public String sendSms(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String aliyunSendSms(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String updateRedisSmsConfig() {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getRedisSmsConfig(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String querySmsRecord(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String sendMail(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String updateRedisMailConfig() {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getRedisMailConfig(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getPushMailRecord(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String sendJg(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getReportReceiveds(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String jgBindingRegId(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String jgUnbind(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String updateRedisJgConfig() {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String queryJgPushRecord(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String vivoSend(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String vivoSendGroup(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String vivoSendAll(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String bindingRegId(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String unbind(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getStatistics(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String updateRedisVivoConfig() {
+        return null;
+    }
+
+    @Override
+    public String queryVivoPushRecord(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String vivoPushNotify(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String huaweiSend(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String huaweiBindingRegId(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String huaweiUnbind(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String huaweiPushNotify(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String updateRedisHuaweiConfig() {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String queryHuaweiPushRecord(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String assembleSend(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String assembleBinding(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String assembleUnbind(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String assemblequeryRedisConfigs(JSONObject body) {
+        return resultJson.toJSONString();
+    }
+}

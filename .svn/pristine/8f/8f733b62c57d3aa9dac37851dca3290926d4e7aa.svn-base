@@ -1,0 +1,380 @@
+package cn.gnw.push.provider.service;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.UniqueKeyUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.PushUtil;
+import cn.gnw.push.api.utils.vivopush.VivoPushUtil;
+import cn.gnw.push.provider.config.BaseConfig;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+/**
+ * vivo推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-30 10:20
+ */
+@Service
+public class VivoPushService extends BaseBS {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    /**
+     * 单推
+     * 加入队列
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject send(JSONObject params){
+        JSONObject result = new JSONObject();
+
+        JSONObject JMsg = PushUtil.getInstance().toPushInQueue(Constants.PUSH_TYPE_VIVO_SEND, params);
+        getLogger().info("vivo推送信息（单推）入队列：" + JMsg);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 群推
+     * 加入队列
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendGroup(JSONObject params){
+        JSONObject result = new JSONObject();
+
+        JSONObject JMsg = PushUtil.getInstance().toPushInQueue(Constants.PUSH_TYPE_VIVO_SEND_GROUP, params);
+        getLogger().info("vivo推送信息（群推）入队列：" + JMsg);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 全量群推
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendAll(JSONObject params){
+        JSONObject result = new JSONObject();
+
+        String notifyType = params.getString("notifyType");
+        String title = params.getString("title");
+        String content = params.getString("content");
+        Integer timeToLive = params.getInteger("timeToLive");
+        String skipType = params.getString("skipType");
+        String skipContent = params.getString("skipContent");
+        String networkType = params.getString("networkType");
+        Map<String, String> clientCustomMap = (Map<String, String>) params.get("clientCustomMap");
+
+        String appId = params.getString("app_id");
+        String appKey = params.getString("app_key");
+        String appSecret = params.getString("app_secret");
+        VivoPushUtil vivoPushUtil = new VivoPushUtil(appId, appKey, appSecret);
+        String authToken = vivoPushUtil.getAccessToken();
+        JSONObject sResult = vivoPushUtil.sendAll(notifyType, title, content, timeToLive, skipType, skipContent, networkType, clientCustomMap, authToken);
+        getLogger().info("vivoPush推送（全量推）返回结果：{}", sResult.toJSONString());
+        if (sResult.getInteger("result") == 0 ) {
+            result.put("status", "0");
+            result.put("message", "success");
+            result.put("data", sResult);
+        }else{
+            result.put("status", -1);
+            result.put("message", sResult.getString("desc"));
+            result.put("err_code", sResult.getString("result"));
+            result.put("data", sResult);
+        }
+        return result;
+    }
+
+    /**
+     * 获取消息推送统计值
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject getStatistics(String appId, String appKey, String appSecret, String taskIds){
+        JSONObject result = new JSONObject();
+        VivoPushUtil vivoPushUtil = new VivoPushUtil(appId, appKey, appSecret);
+        String authToken = vivoPushUtil.getAccessToken();
+        JSONObject sResult = vivoPushUtil.getStatistics(taskIds, authToken);
+        getLogger().info("vivoPush获取消息推送统计值返回结果：{}", sResult.toJSONString());
+        if (sResult.getInteger("result") == 0 ) {
+            result.put("status", "0");
+            result.put("message", "success");
+            result.put("data", sResult);
+        }else{
+            result.put("status", -1);
+            result.put("message", sResult.getString("desc"));
+            result.put("err_code", sResult.getString("result"));
+            result.put("data", sResult);
+        }
+        return result;
+    }
+
+    /**
+     * 消息回执
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject notify(List<Map<String, String>> params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+
+        simpleMybatisDao.update("push.vivo.updateReachReceipt", params);
+
+        result.put("status", 0);
+        result.put("message", "success");
+
+        return result;
+    }
+
+    /**
+     * vivo推送服务器
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendVivo (JSONObject params) {
+
+        JSONObject result = new JSONObject();
+        String recordId = UniqueKeyUtil.getKey(new Date());
+
+        String regId = params.getString("regId");
+        String alias = params.getString("alias");
+        String notifyType = params.getString("notifyType");
+        Integer timeToLive = params.getInteger("timeToLive");
+        String title = params.getString("title");
+        String content = params.getString("content");
+        String skipType = params.getString("skipType");
+        String skipContent = params.getString("skipContent");
+        String networkType = params.getString("networkType");
+        Map<String, String> clientCustomMap = (Map<String, String>) params.get("clientCustomMap");
+        Map<String, String> extra = (Map<String, String>)params.get("extra");
+        String appId = params.getString("app_id");
+        String appKey = params.getString("app_key");
+        String appSecret = params.getString("app_secret");
+
+//        Map<String, String> extra = new HashMap<String, String>();
+//        BaseConfig baseConfig = SpringUtil.getBean("baseConfig", BaseConfig.class);
+//        String callbackUrl = new StringBuffer(baseConfig.getApiAccessDomain() + "/push/vivo/notify").toString();
+//        extra.put("callback", callbackUrl);
+//        extra.put("callback.param", recordId);
+
+        VivoPushUtil vivoPushUtil = new VivoPushUtil(appId, appKey, appSecret);
+        String authToken = vivoPushUtil.getAccessToken();
+        JSONObject sResult = vivoPushUtil.sendMessage(regId, alias, notifyType, timeToLive, title, content, skipType, skipContent, networkType, clientCustomMap, extra, authToken);
+        getLogger().info("vivoPush推送（单推）返回结果：{}", sResult.toJSONString());
+
+        String taskId = "";
+        String status ;
+        if (sResult.getInteger("result") == 0 ) {
+            result.put("status", "0");
+            result.put("message", "success");
+            result.put("data", sResult);
+            status = "0";
+            taskId = sResult.getString("taskId");
+        }else{
+            result.put("status", -1);
+            result.put("message", sResult.getString("desc"));
+            result.put("err_code", sResult.getString("result"));
+            result.put("data", sResult);
+            status = "1";
+        }
+
+        params.put("record_id", recordId);
+        params.put("app_id", appId);
+        params.put("platform", Constants.PLATFORM_ANDROID);
+        params.put("status", status);
+        params.put("result", sResult.toJSONString());
+        params.put("task_id", taskId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.vivo.addPushVivoRecord", params);
+        return result;
+    }
+
+    /**
+     * vivo批量推送服务器
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendVivoGroup (JSONObject params) {
+        JSONObject result = new JSONObject();
+        String taskId = "";
+        Set<String> regIds = (Set<String>)params.get("regIds");
+        Set<String> alias = (Set<String>)params.get("alias");
+        String notifyType = params.getString("notifyType");
+        Integer timeToLive = params.getInteger("timeToLive");
+        String title = params.getString("title");
+        String content = params.getString("content");
+        String skipType = params.getString("skipType");
+        String skipContent = params.getString("skipContent");
+        String networkType = params.getString("networkType");
+        Map<String, String> clientCustomMap = (Map<String, String>) params.get("clientCustomMap");
+        Map<String, String> extra = (Map<String, String>)params.get("extra");
+        String appId = params.getString("app_id");
+        String appKey = params.getString("app_key");
+        String appSecret = params.getString("app_secret");
+
+        VivoPushUtil vivoPushUtil = new VivoPushUtil(appId, appKey, appSecret);
+        String authToken = vivoPushUtil.getAccessToken();
+
+        String vStatus = "0";   //发送状态
+        String vResult = ""; //发货结果
+        getLogger().info("vivoPush（群推）参数：{}", params.toJSONString());
+        JSONObject saveResult = vivoPushUtil.saveListPayload(title, content, notifyType, timeToLive, skipType, skipContent, networkType, clientCustomMap, extra, authToken);
+        getLogger().info("vivoPush保存群推消息公共体（群推）返回结果：{}", saveResult.toJSONString());
+        if(saveResult.getInteger("result") == 0){
+            taskId = saveResult.getString("taskId");
+            JSONObject toResult = vivoPushUtil.pushToList(regIds, alias, taskId, authToken);
+            getLogger().info("vivoPush批量推送用户（群推）返回结果：{}", toResult.toJSONString());
+            vResult = toResult.toJSONString();
+            if (toResult.getInteger("result") == 0) {
+                result.put("status", "0");
+                result.put("message", "success");
+                result.put("data", toResult);
+                vStatus = "0";
+            }else{
+                result.put("status", -1);
+                result.put("message", saveResult.getString("desc"));
+                result.put("data", toResult);
+                vStatus = "1";
+            }
+        } else {
+            vResult = saveResult.toJSONString();
+            result.put("status", -1);
+            result.put("message", saveResult.getString("desc"));
+            result.put("data", saveResult);
+            vStatus = "1";
+        }
+
+        List<Map> vivoList = new ArrayList<Map>();
+        Map<String, String> vParams = null;
+        if(regIds != null && regIds.size() >= 2 && regIds.size() <= 1000) {
+
+            Iterator<String> it = regIds.iterator();
+            while(it.hasNext()){
+                vParams = new HashMap<String, String>();
+                String recordId = UniqueKeyUtil.getKey(new Date());
+                vParams.put("record_id", recordId);
+                vParams.put("regist_id", it.next());
+                vParams.put("app_id", appId);
+                vParams.put("platform", Constants.PLATFORM_ANDROID);
+                vParams.put("title", title);
+                vParams.put("content", content);
+                vParams.put("status", vStatus);
+                vParams.put("result", vResult);
+                vParams.put("task_id", taskId);
+                vivoList.add(vParams);
+            }
+        }else if (alias != null && alias.size() >= 2 && alias.size() <= 1000) {
+            Iterator<String> it = alias.iterator();
+            while(it.hasNext()){
+                vParams = new HashMap<String, String>();
+                String recordId = UniqueKeyUtil.getKey(new Date());
+                vParams.put("record_id", recordId);
+                vParams.put("alias", it.next());
+                vParams.put("app_id", appId);
+                vParams.put("platform", Constants.PLATFORM_ANDROID);
+                vParams.put("title", title);
+                vParams.put("content", content);
+                vParams.put("status", vStatus);
+                vParams.put("result", vResult);
+                vParams.put("task_id", taskId);
+                vivoList.add(vParams);
+            }
+        }
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.vivo.addPushVivoRecordList", vivoList);
+        return result;
+    }
+
+    /**
+     * vivo设备绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject bindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        String bindRecordId = UniqueKeyUtil.getKey(new Date());
+        params.put("bind_record_id", bindRecordId);
+        params.put("platform", Constants.PLATFORM_ANDROID);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.vivo.addBindRecord", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * vivo设备修改绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject updateBindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.vivo.updateVivoBindRegId", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * vivo设备解除绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject unbind (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        params.put("status", "2");
+        simpleMybatisDao.update("push.vivo.unbind", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 增加Vivo配置
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject addConfig(JSONObject params){
+        JSONObject result = new JSONObject();
+        String configId = UniqueKeyUtil.getKey(new Date());
+
+        params.put("config_id", configId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.vivo.addPushVivoConfig", params);
+        if(count > 0) {
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "vivo config insert error");
+        }
+        return result;
+    }
+
+}

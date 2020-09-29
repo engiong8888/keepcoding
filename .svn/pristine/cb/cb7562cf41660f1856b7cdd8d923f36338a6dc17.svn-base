@@ -1,0 +1,46 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<script type="text/javascript" th:inline="javascript">
+    var ctx = /*[[${#request.getContextPath()}]]*/ '';
+</script>
+<!-- 第三方库文件 -->
+<script th:src="@{/lib/jquery-1.11.3.min.js}"></script>
+<script th:src="@{/lib/bootstrap/js/bootstrap.min.js}"></script>
+<script th:src="@{/lib/bootstrap-table/js/bootstrap-table.js}"></script>
+<script th:src="@{/lib/bootstrap-table/locale/bootstrap-table-zh-CN.min.js}"></script>
+<script th:src="@{/lib/layer/layer.js}"></script>
+<script th:src="@{/lib/validator/validator.js}"></script>
+<script th:src="@{/lib/validator/validator.ext.js}"></script>
+<!-- 全局变量 -->
+<script type="text/javascript">
+    $(document).ready(function() {
+        $.ajaxSetup({
+            type: 'POST',
+            global:true,
+            beforeSend: function () {
+                layer.load(3, {shade: [0.5,'#fff']});
+            },
+            complete: function(xhr, data) {
+                layer.closeAll('loading');
+                var sessionStatus = xhr.getResponseHeader('sessionstatus');
+                if(sessionStatus == 'timeout') {
+                    parent.layer.confirm("由于您长时间没有操作, session已过期, 请重新登录.", {
+                        skin: 'layui-layer-lan',
+                        shift: 0,
+                        btn: ['确定'],
+                        icon: 5
+                    }, function(index) {
+                        parent.layer.close(index);
+                        top.location.href = ctx + "/payman/system/login";
+                    });
+                }
+            }
+        });
+    });
+</script>
+<!-- 自定义工具类 -->
+<script th:src="@{/js/modules/comm/style.js}"></script>
+<script th:src="@{/js/utils/code-info.js}"></script>
+<script th:src="@{/js/utils/date-util.js}"></script>
+<script th:src="@{/js/utils/float-calculation.js}"></script>
+<script th:src="@{/js/utils/layer.js}"></script>
+</html>

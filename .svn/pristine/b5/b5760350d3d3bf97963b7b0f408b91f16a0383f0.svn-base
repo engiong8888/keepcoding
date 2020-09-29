@@ -1,0 +1,36 @@
+package cn.gnw.push.iosmdm.provider.util;
+
+import cn.gnw.push.api.utils.ConfigUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.*;
+
+/**
+ * 和IOS的MDM相关的工具方法
+ * @author jiang.li
+ *
+ */
+@SuppressWarnings("all")
+public class MdmUtils {
+
+    private static Log logger = LogFactory.getLog(MdmUtils.class);
+
+    /**
+     * Java读取MobileConfig配置描述文件
+     * @return
+     * @throws IOException
+     */
+    public static String readConfig(String path) throws IOException {
+        String config =  ConfigUtils.mdmProperties().getProperty("APNS_CONFIG");
+        InputStream fis = new FileInputStream(path + config);
+        BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+        StringBuffer sb = new StringBuffer();
+        String line;
+        while ((line = br.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        return sb.toString();
+    }
+
+}

@@ -1,0 +1,65 @@
+package cn.gnw.push.api.entity.websocket;
+
+import com.alibaba.fastjson.annotation.JSONField;
+
+import java.util.List;
+
+/**
+ * 设备中心实体类
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-21 12:42
+ */
+public class DeviceStatus {
+
+    private String version;
+    @JSONField(name = "command_no")
+    private String commandNo;
+    @JSONField(name = "command_code")
+    private String commandCode;
+    @JSONField(name = "create_time")
+    private long createTime;
+
+    private Data data;
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public String getCommandNo() {
+        return commandNo;
+    }
+
+    public void setCommandNo(String commandNo) {
+        this.commandNo = commandNo;
+    }
+
+    public String getCommandCode() {
+        return commandCode;
+    }
+
+    public void setCommandCode(String commandCode) {
+        this.commandCode = commandCode;
+    }
+
+    public long getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(long createTime) {
+        this.createTime = createTime;
+    }
+
+    public Data getData() {
+        return data;
+    }
+
+    public void setData(Data data) {
+        this.data = data;
+    }
+}

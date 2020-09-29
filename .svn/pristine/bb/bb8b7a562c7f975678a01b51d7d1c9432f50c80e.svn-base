@@ -1,0 +1,69 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 聚合推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-11-12 15:49
+ */
+@RestController
+@RequestMapping(value = "/push/assemble")
+public class PushAssembleController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 推送
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.assembleSend(rParams);
+    }
+
+    /**
+     * 绑定
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String binding(@RequestBody JSONObject rParams){
+        return pushServiceClient.assembleBinding(rParams);
+    }
+
+    /**
+     * 解绑
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbind(@RequestBody JSONObject rParams){
+        return pushServiceClient.assembleUnbind(rParams);
+    }
+
+    /**
+     * 获取redis配置列表
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/redis_config")
+    @ResponseBody
+    private String queryRedisConfig(@RequestBody JSONObject rParams){
+        return pushServiceClient.assemblequeryRedisConfigs(rParams);
+    }
+
+    @PostMapping("/config/redis_update")
+    @ResponseBody
+    private String updateRedisConfig(@RequestBody JSONObject rParams){
+        return pushServiceClient.assembleUpdateRedisConfigs(rParams);
+    }
+}

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>cn.gnw</groupId>
+	<artifactId>gnw-push-parent</artifactId>
+	<version>0.0.1-SHAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>gnw-push-parent</name>
+	<description>推送服务</description>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>1.5.7.RELEASE</version>
+		<relativePath/>
+	</parent>
+
+	<modules>
+		<module>gnw-push-api</module>
+		<module>gnw-push-consumer</module>
+		<module>gnw-push-provider</module>
+        <module>gnw-push-iosmdm-provider</module>
+		<module>gnw-push-websocket-provider</module>
+        <module>gnw-push-manager</module>
+        <module>gnw-push-iosmdm-consumer</module>
+    </modules>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+		<spring-cloud.version>Dalston.SR1</spring-cloud.version>
+		<spring-boot-starter-parent.version>1.5.7.RELEASE</spring-boot-starter-parent.version>
+		<gnw-pub-base.version>0.0.4-SNAPSHOT</gnw-pub-base.version>
+		<gnw-push-parent.version>0.0.1-SHAPSHOT</gnw-push-parent.version>
+		<gnw-push-api.version>0.0.1-SHAPSHOT</gnw-push-api.version>
+		<gnw-push-consumer.version>0.0.1-SHAPSHOT</gnw-push-consumer.version>
+		<gnw-push-provider.version>0.0.1-SHAPSHOT</gnw-push-provider.version>
+		<skipTests>true</skipTests>
+	</properties>
+	<dependencies>
+		<!-- 基础模块 -->
+		<dependency>
+			<groupId>cn.gnw</groupId>
+			<artifactId>gnw-pub-base</artifactId>
+			<version>${gnw-pub-base.version}</version>
+		</dependency>
+	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<finalName>${project.artifactId}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+	<distributionManagement>
+		<repository>
+			<id>nexus-releases</id>
+			<url>http://172.168.50.226:8081/nexus/content/repositories/releases/</url>
+		</repository>
+		<snapshotRepository>
+			<id>nexus-snapshots</id>
+			<url>http://172.168.50.226:8081/nexus/content/repositories/snapshots/</url>
+		</snapshotRepository>
+	</distributionManagement>
+
+
+</project>

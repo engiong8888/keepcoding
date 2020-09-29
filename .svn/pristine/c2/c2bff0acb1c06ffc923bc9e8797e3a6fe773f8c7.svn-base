@@ -1,0 +1,22 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "task_ids"
+  ],
+  "properties": {
+    "task_ids": {
+      "$id": "#/properties/task_ids",
+      "type": "string",
+      "title": "The Task_ids Schema",
+      "default": "",
+      "examples": [
+        "506888009179205632,506888009179205888"
+      ],
+      "pattern": "^(.*)$"
+    }
+  }
+}

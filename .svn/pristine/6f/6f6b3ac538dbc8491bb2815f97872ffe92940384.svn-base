@@ -1,0 +1,45 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.HandshakeData;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.listener.PingListener;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 心跳
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-10-31 17:13
+ */
+public class WSPingListener extends BaseBS implements PingListener {
+    @Override
+    public void onPing(SocketIOClient socketIOClient) {
+        HandshakeData handshakeData = socketIOClient.getHandshakeData();
+        Map<String, List<String>> map = handshakeData.getUrlParams();
+        if (map.containsKey("device_id")) {
+            String deviceId = map.get("device_id").get(0);
+            String channel = map.containsKey("channel") ? map.get("channel").get(0) : WSConstants.WS_CHANNEL_DATA;
+            String clientId = socketIOClient.getSessionId().toString();
+            JSONObject object = new JSONObject();
+            object.put("device_id",deviceId);
+            object.put("channel",channel);
+            object.put("client_id",clientId);
+            RedisUtil.getInstance().keepAlive(object);
+            getLogger().info(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                    .append("\nPing : ").append(deviceId)
+                    .append("\nChannel : ").append(channel)
+                    .append("\nclientId : ").append(socketIOClient.getSessionId())
+                    .toString());
+        } else {
+            getLogger().error(new StringBuffer("Ping Error,No Find device_Id : ").append(map).toString());
+        }
+    }
+}

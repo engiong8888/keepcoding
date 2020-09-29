@@ -1,0 +1,21 @@
+FROM 59.61.92.150:8888/gnw.java:1.0.0 as jdk8
+FROM 59.61.92.150:8888/gnw.supervisor:3.3.4
+MAINTAINER by shemg (415355294@qq.com)
+
+COPY --from=jdk8 /data/ent /data/ent
+#安装jdk
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV JAVA_HOME=/data/ent/java/jdk1.8.0_131
+ENV JRE_HOME=/data/ent/java/jdk1.8.0_131
+ENV PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+ENV CLASSPATH=$CLASSPATH:.:$JAVA_HOME/lib:$JAVA_HOME/jre/lib
+#定义时区参数
+ENV TZ=Asia/Shanghai
+#设置时区
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo '$TZ' > /etc/timezone
+#以上的内容和顺序不要改动
+
+RUN mkdir -p /data/ent /data/project /data/logs/java/gnw-push-iosmdm-provider
+COPY gnw-push-iosmdm-provider.jar /data/project
+

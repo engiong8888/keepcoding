@@ -1,0 +1,46 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "pa_type",
+    "device_id",
+    "regist_id"
+  ],
+  "properties": {
+    "pa_type": {
+      "$id": "#/properties/pa_type",
+      "type": "string",
+      "title": "The Pa_type Schema",
+      "default": "",
+      "examples": [
+        "001"
+      ],
+      "maxLength":3,
+      "pattern": "^(.*)$"
+    },
+    "device_id": {
+      "$id": "#/properties/device_id",
+      "type": "string",
+      "title": "The Device_id Schema",
+      "default": "",
+      "examples": [
+        "1c5fd5b7a3fc32d6f05a493a5889e838"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "regist_id": {
+      "$id": "#/properties/regist_id",
+      "type": "string",
+      "title": "The Regist_id Schema",
+      "default": "",
+      "examples": [
+        "160a3797c828e3b66d5"
+      ],
+      "pattern": "^(.*)$"
+    }
+  }
+}

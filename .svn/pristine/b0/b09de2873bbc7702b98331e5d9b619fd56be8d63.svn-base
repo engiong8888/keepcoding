@@ -1,0 +1,1749 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.entity.jsonschena.SchenaConfigUtil;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.provider.jsonSchema.JsonSchemaUtil;
+import cn.gnw.push.provider.service.*;
+import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Lists;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.*;
+
+/**
+ * 推送聚合
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-11-08 11:02
+ */
+@RestController
+@RequestMapping(value = "/push/assemble")
+public class PushAssembleController extends BaseBS {
+
+    /**
+     * 推送
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"pa_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            String paType = rParams.getString("pa_type");
+
+            if (Constants.PA_TYPE_JIGUANG.equals(paType)) {
+                result = jiguangSend(rParams);
+            } else if (Constants.PA_TYPE_VIVO.equals(paType)) {
+                result = vivoPush(rParams);
+            } else if (Constants.PA_TYPE_HUAWEI.equals(paType)) {
+                result = huaweiSend(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "pa_type is error");
+            }
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 极光推送
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject jiguangSend(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"content", "platform", "push_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_JIGUANG_SEND);
+
+            JgPushService jPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_JG_CONFIG);
+                if (result.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取极光配置config [Redis][key]{").append(Constants.REDIS_MAIL_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String jgStr = result.getString("data");
+                    if (!StringUtil.isBlank(jgStr)) {
+                        JSONObject jgConfig = JSONObject.parseObject(jgStr);
+                        String appKey = jgConfig.getString("app_key");
+                        String masterSecret = jgConfig.getString("master_secret");
+
+                        String pushType = rParams.getString("push_type");
+                        String title = rParams.getString("title");
+                        String content = rParams.getString("content");
+                        String platform = rParams.getString("platform");
+                        List<String> alias = (List<String>) rParams.get("alias");
+                        List<String> tags = (List<String>) rParams.get("tags");
+                        //            List<String> registrationIds = (List<String>) rParams.get("registration_ids");
+                        List<String> devices = (List<String>) rParams.get("devices");
+                        Map<String, String> extra = (Map<String, String>) rParams.get("extra");
+                        String jgIosEnvironment = rParams.getString("jg_ios_environment");
+
+                        List<String> regIdList = null;
+
+                        if (devices != null && !devices.isEmpty()) {
+                            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                            Map<String, Object> params = new HashMap<String, Object>();
+                            params.put("devices", devices);
+                            List<String> devList = simpleMybatisDao.selectList("push.jiguang.queryIdListByDevices", params, String.class);
+                            if (devList.size() > 0) {
+                                regIdList = devList;
+                                System.out.println("regIdList.size()>>" + regIdList.size());
+                            }
+                        }
+
+                        JSONObject params = new JSONObject();
+                        params.put("push_type", pushType);
+                        params.put("title", title);
+                        params.put("alert", content);
+                        params.put("platform", platform);
+                        params.put("alias", alias);
+                        params.put("tags", tags);
+                        params.put("registration_ids", regIdList);
+                        params.put("extra", extra);
+                        params.put("app_key", appKey);
+                        params.put("master_secret", masterSecret);
+                        params.put("jg_ios_environment", jgIosEnvironment);
+                        System.out.println();
+                        getLogger().info("极光(a)推送，参数：{}", JSONObject.toJSONString(params));
+                        result = jPushService.send(params);
+                        getLogger().debug("极光(a)推送，结果: {}" + result.toString());
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "jiguang config in redis does not exist");
+                    }
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("极光(a)推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * vivo推送选择器
+     * 01：单推 02：群推 03：全推
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoPush(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"vivo_push_type"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_VIVO_PUSH);
+            String vivoPushType = rParams.getString("vivo_push_type");
+            if ("01".equals(vivoPushType)) {
+                result = vivoSend(rParams);
+            } else if ("02".equals(vivoPushType)) {
+                result = vivoSendGroup(rParams);
+            } else if ("03".equals(vivoPushType)) {
+                result = sendAll(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "vivo_push_type does not exist");
+            }
+        }
+        return result;
+    }
+
+    /**
+     * vivo推送（单推）
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoSend(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+
+        String[] argSymbols = {"notify_type", "title", "content", "skip_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_VIVO_SEND);
+//            String deviceId = rParams.getString("device_id");
+//            String alias = rParams.getString("alias");
+//            if(StringUtil.isBlank(deviceId) && StringUtil.isBlank(alias)){
+//                result.put("status", -1);
+//                result.put("message", "regId and alias are miss!");
+//                return result;
+//            }
+
+            List<String> deviceIds = (List<String>) rParams.get("devices");
+            List<String> aliasList = (List<String>) rParams.get("alias");
+            if ((deviceIds != null && !deviceIds.isEmpty()) || (aliasList != null && !aliasList.isEmpty())) {
+
+                VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+                try {
+                    result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_VIVO_CONFIG);
+                    if (result.getIntValue("status") == 0) {
+
+                        getLogger().info(new StringBuffer("获取vivo配置config [Redis][key]{").append(Constants.REDIS_VIVO_CONFIG)
+                                .append("}[config]{").append(result).append("}").toString());
+                        String huaweiStr = result.getString("data");
+                        if (!StringUtil.isBlank(huaweiStr)) {
+                            JSONObject huaweiConfig = JSONObject.parseObject(huaweiStr);
+
+                            String appId = huaweiConfig.getString("app_id");
+                            String appKey = huaweiConfig.getString("app_key");
+                            String appSecret = huaweiConfig.getString("app_secret");
+
+                            String regId = "";
+                            String alias = "";
+                            if (deviceIds != null && !deviceIds.isEmpty()) {
+                                String deviceId = deviceIds.get(0);
+                                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                                Map<String, String> params = new HashMap<String, String>();
+                                params.put("deviceId", deviceId);
+                                regId = simpleMybatisDao.selectOne("push.vivo.queryOneRegIdByDevice", params, String.class);
+                            }
+
+                            if (aliasList != null && !aliasList.isEmpty()) {
+                                alias = aliasList.get(0);
+                            }
+
+                            Map<String, String> clientCustomMap = (Map<String, String>) rParams.get("client_custom_map");
+                            Map<String, String> extra = (Map<String, String>) rParams.get("extra");
+
+                            JSONObject params = new JSONObject();
+                            params.put("regId", regId);
+                            params.put("alias", alias);
+                            params.put("notifyType", rParams.getString("notify_type"));
+                            params.put("title", rParams.getString("title"));
+                            System.out.println("timetoLive" + rParams.getInteger("timeto_live"));
+                            params.put("timetoLive", rParams.getInteger("time_to_live"));
+                            params.put("networkType", rParams.getInteger("network_type"));
+                            params.put("content", rParams.getString("content"));
+                            params.put("skipType", rParams.getString("skip_type"));
+                            params.put("skipContent", rParams.getString("skip_content"));
+                            params.put("clientCustomMap", clientCustomMap);
+                            params.put("extra", extra);
+                            params.put("app_id", appId);
+                            params.put("app_key", appKey);
+                            params.put("app_secret", appSecret);
+                            System.out.println();
+                            getLogger().info("vivo推送(a)，参数：{} ", JSONObject.toJSONString(params));
+                            result = vivoPushService.send(params);
+                            getLogger().info("vivo推送(a)，结果：{} ", result.toJSONString());
+                        } else {
+                            result.put("status", -1);
+                            result.put("message", "vivo config in redis does not exist");
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    getLogger().error("vivo推送(a)，失败：{}", e.getMessage());
+                    result.put("status", -1);
+                    result.put("message", e.getMessage());
+                }
+            } else {
+                result.put("status", -1);
+                result.put("message", "regId and alias are miss!");
+            }
+        }
+        return result;
+    }
+
+    /**
+     * vivo推送（群推）
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoSendGroup(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"notify_type", "title", "content", "skip_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_VIVO_SEND_GROUP);
+
+            List<String> deviceIds = (List<String>) rParams.get("devices");
+            List<String> aliasList = (List<String>) rParams.get("alias");
+            if ((deviceIds != null && !deviceIds.isEmpty()) || (aliasList != null && !aliasList.isEmpty())) {
+                List<String> regIdList = new ArrayList<String>();
+                Set<String> alias = null;
+                VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+                try {
+
+                    result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_VIVO_CONFIG);
+                    if (result.getIntValue("status") == 0) {
+
+                        getLogger().info(new StringBuffer("获取vivo配置config [Redis][key]{").append(Constants.REDIS_VIVO_CONFIG)
+                                .append("}[config]{").append(result).append("}").toString());
+                        String huaweiStr = result.getString("data");
+                        if (!StringUtil.isBlank(huaweiStr)) {
+                            JSONObject huaweiConfig = JSONObject.parseObject(huaweiStr);
+
+                            String appId = huaweiConfig.getString("app_id");
+                            String appKey = huaweiConfig.getString("app_key");
+                            String appSecret = huaweiConfig.getString("app_secret");
+                            //regIds,alias需一个不为空，两个都为空取regIds，个数限制2-1000个
+                            if (deviceIds != null && deviceIds.size() >= 2 && deviceIds.size() <= 1000) {
+                                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                                Map<String, Object> params = new HashMap<String, Object>();
+                                params.put("devices", deviceIds);
+                                regIdList = simpleMybatisDao.selectList("push.vivo.queryIdListByDevices", params, String.class);
+                                System.out.println("regIdList.size()>>" + regIdList.size());
+
+                                if (regIdList.size() < 2 || regIdList.size() > 1000) {
+                                    result.put("status", -1);
+                                    result.put("message", "设备对应的regId个数需在2到1000个之间");
+                                    return result;
+                                }
+                            } else if (aliasList != null && aliasList.size() >= 2 && aliasList.size() <= 1000) {
+                                alias = new HashSet<>(aliasList);
+                            } else {
+                                result.put("status", -1);
+                                result.put("message", "aliases和regIds不能都为空，且个数在2到1000个之间");
+                                return result;
+                            }
+
+                            Set<String> regIds = new HashSet<>(regIdList);
+
+                            Map<String, String> clientCustomMap = (Map<String, String>) rParams.get("client_custom_map");
+                            Map<String, String> extra = (Map<String, String>) rParams.get("extra");
+
+                            JSONObject params = new JSONObject();
+                            params.put("regIds", regIds);
+                            params.put("alias", alias);
+                            params.put("notifyType", rParams.getString("notify_type"));
+                            params.put("timeToLive", rParams.getInteger("time_to_live"));
+                            params.put("title", rParams.getString("title"));
+                            params.put("content", rParams.getString("content"));
+                            params.put("skipType", rParams.getString("skip_type"));
+                            params.put("skipContent", rParams.getString("skip_content"));
+                            params.put("networkType", rParams.getInteger("network_type"));
+                            params.put("clientCustomMap", clientCustomMap);
+                            params.put("extra", extra);
+                            params.put("app_id", appId);
+                            params.put("app_key", appKey);
+                            params.put("app_secret", appSecret);
+                            System.out.println();
+                            getLogger().info("vivo推送(a)（群推），参数：{} ", JSONObject.toJSONString(params));
+                            result = vivoPushService.sendGroup(params);
+                            getLogger().info("vivo推送(a)（群推），结果：{} ", result.toJSONString());
+                        } else {
+                            result.put("status", -1);
+                            result.put("message", "vivo config in redis does not exist");
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    getLogger().error("vivo推送(a)（群推），失败：{}", e.getMessage());
+                    result.put("status", -1);
+                    result.put("message", e.getMessage());
+                }
+            } else {
+                result.put("status", -1);
+                result.put("message", "regId and alias are miss!");
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * vivo推送（全推）
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject sendAll(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"notify_type", "title", "content", "skip_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_VIVO_SEND_ALL);
+
+            VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_VIVO_CONFIG);
+                if (result.getIntValue("status") == 0) {
+
+                    getLogger().info(new StringBuffer("获取vivo配置config [Redis][key]{").append(Constants.REDIS_VIVO_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String huaweiStr = result.getString("data");
+                    if (!StringUtil.isBlank(huaweiStr)) {
+                        JSONObject huaweiConfig = JSONObject.parseObject(huaweiStr);
+
+                        String appId = huaweiConfig.getString("app_id");
+                        String appKey = huaweiConfig.getString("app_key");
+                        String appSecret = huaweiConfig.getString("app_secret");
+                        Map<String, String> clientCustomMap = (Map<String, String>) rParams.get("client_custom_map");
+                        Map<String, String> extra = (Map<String, String>) rParams.get("extra");
+
+                        JSONObject params = new JSONObject();
+                        params.put("notifyType", rParams.getString("notify_type"));
+                        params.put("title", rParams.getString("title"));
+                        params.put("content", rParams.getString("content"));
+                        params.put("timeToLive", rParams.getInteger("time_to_live"));
+                        params.put("skipType", rParams.getString("skip_type"));
+                        params.put("skipContent", rParams.getString("skip_content"));
+                        params.put("networkType", rParams.getInteger("network_type"));
+                        params.put("clientCustomMap", clientCustomMap);
+                        params.put("app_id", appId);
+                        params.put("app_key", appKey);
+                        params.put("app_secret", appSecret);
+                        System.out.println();
+                        getLogger().info("vivo推送(a)（全量推送），参数：{} ", JSONObject.toJSONString(params));
+                        result = vivoPushService.sendAll(params);
+                        getLogger().info("vivo推送(a)（全量推送），结果：{} ", result.toJSONString());
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "vivo config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("vivo推送(a)（全量推送），失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 华为推送
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject huaweiSend(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"title", "content", "msg_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_HUAWEI_SEND);
+
+            List<String> deviceList = (List<String>) rParams.get("devices");
+            HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_HUAWEI_CONFIG);
+                if (result.getIntValue("status") == 0) {
+
+                    getLogger().info(new StringBuffer("获取华为配置config [Redis][key]{").append(Constants.REDIS_MAIL_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String huaweiStr = result.getString("data");
+                    if (!StringUtil.isBlank(huaweiStr)) {
+                        JSONObject huaweiConfig = JSONObject.parseObject(huaweiStr);
+
+                        String appId = huaweiConfig.getString("app_id");
+                        String appSecret = huaweiConfig.getString("app_secret");
+                        String appPkg = huaweiConfig.getString("app_pkg");
+
+                        String msgType = rParams.getString("msg_type"); //接收0（通知）和1（透传），1需转换为3（华为api）
+
+                        List<String> deviceTokenList = new ArrayList<String>();
+                        if (deviceList != null && !deviceList.isEmpty()) {
+                            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                            Map<String, Object> params = new HashMap<String, Object>();
+                            params.put("devices", deviceList);
+                            deviceTokenList = simpleMybatisDao.selectList("push.huawei.queryIdListByDevices", params, String.class);
+                            System.out.println("regIdList.size()>>" + deviceTokenList.size());
+                            if (deviceTokenList.size() < 1) {
+                                result.remove("data");
+                                result.put("status", -1);
+                                result.put("message", "设备有误，没有对应的device_token!");
+                                return result;
+                            }
+
+                            JSONObject sParams = new JSONObject();
+                            sParams.put("deviceTokens", deviceTokenList);
+                            //body
+                            sParams.put("title", rParams.getString("title"));
+                            sParams.put("content", rParams.getString("content"));
+                            //msg
+                            sParams.put("msgType", msgType);
+                            //action
+                            sParams.put("actionType", rParams.getString("action_type"));
+                            //param
+                            sParams.put("paramIntent ", rParams.getString("param_intent"));
+                            sParams.put("paramUrl", rParams.getString("param_url"));
+                            //ext
+                            sParams.put("biTag", rParams.getString("bi_tag"));
+                            sParams.put("customize", rParams.get("customize"));
+
+                            sParams.put("app_id", appId);
+                            sParams.put("app_secret", appSecret);
+                            sParams.put("app_pkg", appPkg);
+                            System.out.println();
+                            getLogger().info("华为(a)推送，参数：{} ", JSONObject.toJSONString(sParams));
+                            result = huaweiPushService.send(sParams);
+                            getLogger().info("华为(a)推送，结果：{} ", result.toJSONString());
+                        }
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "huawei config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("华为(a)推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result;
+    }
+
+
+    /**
+     * 绑定设备
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    public String bindingDevices(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"pa_type", "device_id", "regist_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            String paType = rParams.getString("pa_type");
+
+            if (Constants.PA_TYPE_JIGUANG.equals(paType)) {
+                result = jiguangBinding(rParams);
+            } else if (Constants.PA_TYPE_VIVO.equals(paType)) {
+                result = vivoBinding(rParams);
+            } else if (Constants.PA_TYPE_HUAWEI.equals(paType)) {
+                result = huaweiBinding(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "pa_type is error");
+            }
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 极光设备绑定
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject jiguangBinding(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"platform"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_JIGUANG_BINDING);
+            try {
+                String deviceId = rParams.getString("device_id");
+                Map<String, String> qParams = new HashMap<String, String>();
+                qParams.put("device_id", deviceId);
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.jiguang.queryBindRecord", qParams, Map.class);
+                JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+
+                if (bindRecord != null) {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("bind_record_id", bindRecord.get("bind_record_id"));
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    getLogger().info("极光(a)设备修改绑定regId，参数：{} ", params.toString());
+                    result = jgPushService.updateJgBindRecord(params);
+                    getLogger().info("极光(a)极光设备修改绑定regId，结果：{} ", result.toJSONString());
+//                    result.put("status", -1);
+//                    result.put("message", "已绑定设备");
+                } else {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    params.put("platform", rParams.getString("platform"));
+                    getLogger().info("极光(a)设备绑定regist_id，参数：{} ", params.toString());
+                    result = jgPushService.bindRecord(params);
+                    getLogger().info("极光(a)设备绑定regist_id，结果：{} ", result.toJSONString());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("极光(a)设备绑定registId，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * vivo设备绑定
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoBinding(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        //jsonSchema验证
+        JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_VIVO_BINDING);
+
+        try {
+            String deviceId = rParams.getString("device_id");
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("device_id", deviceId);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.vivo.queryBindRecord", qParams, Map.class);
+            VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+
+            if (bindRecord != null) {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("bind_record_id", bindRecord.get("bind_record_id"));
+                params.put("device_id", rParams.getString("device_id"));
+                params.put("regist_id", rParams.getString("regist_id"));
+                getLogger().info("vivo(a)设备修改绑定regId，参数：{} ", params.toString());
+                result = vivoPushService.updateBindRecord(params);
+                getLogger().info("g_vivo设备修改绑定regId，结果：{} ", result.toJSONString());
+            } else {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("device_id", rParams.getString("device_id"));
+                params.put("regist_id", rParams.getString("regist_id"));
+                getLogger().info("vivo(a)设备绑定regId，参数：{} ", params.toString());
+                result = vivoPushService.bindRecord(params);
+                getLogger().info("vivo(a)设备绑定regId，结果：{} ", result.toJSONString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("vivo(a)设备绑定regId，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 华为设备绑定
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject huaweiBinding(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        //jsonSchema验证
+        JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_HUAWEI_BINDING);
+        try {
+            String deviceId = rParams.getString("device_id");
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("device_id", deviceId);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.huawei.queryBindRecord", qParams, Map.class);
+            HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+
+            if (bindRecord != null) {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("bind_record_id", bindRecord.get("bind_record_id"));
+                params.put("device_id", rParams.getString("device_id"));
+                params.put("regist_id", rParams.getString("regist_id"));
+                getLogger().info("华为(a)设备修改绑定regId，参数：{} ", params.toString());
+                result = huaweiPushService.updateHuaweiBindRecord(params);
+                getLogger().info("华为(a)设备修改绑定regId，结果：{} ", result.toJSONString());
+            } else {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("device_id", rParams.getString("device_id"));
+                params.put("regist_id", rParams.getString("regist_id"));
+                params.put("platform", rParams.getString("platform"));
+                getLogger().info("华为(a)设备绑定registId，参数：{} ", params.toString());
+                result = huaweiPushService.bindRecord(params);
+                getLogger().info("华为(a)设备绑定registId，结果：{} ", result.toJSONString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("华为(a)设备绑定registId，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 解除绑定设备
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbindDevice(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"pa_type", "device_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_UNBIND);
+
+            String paType = rParams.getString("pa_type");
+            if (Constants.PA_TYPE_JIGUANG.equals(paType)) {
+                result = jiguangUnbind(rParams);
+            } else if (Constants.PA_TYPE_VIVO.equals(paType)) {
+                result = vivoUnbind(rParams);
+            } else if (Constants.PA_TYPE_HUAWEI.equals(paType)) {
+                result = huaweiUnbind(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "pa_type is error");
+            }
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 极光设备解绑
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject jiguangUnbind(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String deviceId = rParams.getString("device_id");
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("device_id", deviceId);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.jiguang.queryBindRecord", qParams, Map.class);
+
+            if (bindRecord != null) {
+                JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("device_id", rParams.getString("device_id"));
+                qParams.put("bind_record_id", bindRecord.get("bind_record_id"));
+                getLogger().info("极光(a)设备解除绑定regId，参数：{} ", qParams.toString());
+                result = jgPushService.unbind(qParams);
+                getLogger().info("极光(a)设备解除绑定regId，结果：{} ", result.toJSONString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "设备未绑定regId");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("极光(a)设备绑定regId，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * vivo设备解绑
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoUnbind(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String deviceId = rParams.getString("device_id");
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("device_id", deviceId);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.vivo.queryBindRecord", qParams, Map.class);
+
+            if (bindRecord != null) {
+                VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+
+                qParams.put("bind_record_id", bindRecord.get("bind_record_id"));
+                getLogger().info("vivo(a)设备解除绑定regId，参数：{} ", qParams.toString());
+                result = vivoPushService.unbind(qParams);
+                getLogger().info("vivo(a)设备解除绑定regId，结果：{} ", result.toJSONString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "设备未绑定regId");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("vivo(a)设备绑定regId，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 华为设备解绑
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject huaweiUnbind(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String deviceId = rParams.getString("device_id");
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("device_id", deviceId);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.huawei.queryBindRecord", qParams, Map.class);
+
+            if (bindRecord != null) {
+                HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+                qParams.put("bind_record_id", bindRecord.get("bind_record_id"));
+                getLogger().info("华为(a)设备解除绑定regId，参数：{} ", qParams.toString());
+                result = huaweiPushService.unbind(qParams);
+                getLogger().info("华为(a)设备解除绑定regId，结果：{} ", result.toJSONString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "设备未绑定regId");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("华为(a)设备绑定regId，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+
+    /**
+     * 推送记录
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String pushRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"pa_type", "source", "limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_QUERY_RECORD);
+            String paType = rParams.getString("pa_type");
+            if (Constants.PA_TYPE_JIGUANG.equals(paType)) {
+                result = jiguangPushRecord(rParams);
+            } else if (Constants.PA_TYPE_VIVO.equals(paType)) {
+                result = vivoPushRecord(rParams);
+            } else if (Constants.PA_TYPE_HUAWEI.equals(paType)) {
+                result = huaweiPushRecord(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "pa_type is error");
+            }
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 极光推送记录
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject jiguangPushRecord(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+            qParams.put("regist_id", rParams.getString("regist_id"));
+            qParams.put("alias", rParams.getString("alias"));
+            qParams.put("platform", rParams.getString("platform"));
+            qParams.put("title", rParams.getString("title"));
+            qParams.put("content", rParams.getString("content"));
+            qParams.put("status", rParams.getString("status"));
+            qParams.put("remark", rParams.getString("remark"));
+
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> cParams = new HashMap<String, String>();
+            cParams.put("source", rParams.getString("source"));
+            Map<String, String> jiguangConfig = simpleMybatisDao.selectOne("push.jiguang.queryPushJgConfig", cParams, Map.class);
+            if (jiguangConfig != null) {
+                qParams.put("app_key", jiguangConfig.get("app_key"));
+                getLogger().info(new StringBuffer("极光(a)推送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                List<Map> jgRecordList = simpleMybatisDao.selectList("push.jiguang.queryPushJiguangRecord", qParams, Map.class);
+                if (jgRecordList == null) {
+                    result.put("status", -1);
+                    result.put("message", "暂无极光推送发送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", jgRecordList);
+                    result.put("count", jgRecordList.size());
+                }
+                getLogger().info(new StringBuffer("极光(a)推送流水查询，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取极光配置信息错误！");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取极光(a)推送记录失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * vivo推送记录
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoPushRecord(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+            qParams.put("regist_id", rParams.getString("regist_id"));
+            qParams.put("alias", rParams.getString("alias"));
+            qParams.put("platform", rParams.getString("platform"));
+            qParams.put("title", rParams.getString("title"));
+            qParams.put("content", rParams.getString("content"));
+            qParams.put("status", rParams.getString("status"));
+            qParams.put("is_reach", rParams.getString("is_reach"));
+            qParams.put("remark", rParams.getString("remark"));
+
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> cParams = new HashMap<String, String>();
+            cParams.put("source", rParams.getString("source"));
+            Map<String, String> vivoConfig = simpleMybatisDao.selectOne("push.vivo.queryPushVivoConfig", cParams, Map.class);
+            if (vivoConfig != null) {
+
+                qParams.put("app_id", vivoConfig.get("app_id"));
+                getLogger().info(new StringBuffer("vivo(a)推送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                List<Map> vivoRecordList = simpleMybatisDao.selectList("push.vivo.queryPushVivoRecord", qParams, Map.class);
+                if (vivoRecordList == null) {
+                    result.put("status", -1);
+                    result.put("message", "暂无vivo推送发送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", vivoRecordList);
+                    result.put("count", vivoRecordList.size());
+                }
+                getLogger().info(new StringBuffer("vivo(a)推送流水查询，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取vivo配置信息错误！");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取vivo(a)推送记录失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 华为推送记录
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject huaweiPushRecord(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+            qParams.put("regist_id", rParams.getString("regist_id"));
+            qParams.put("alias", rParams.getString("alias"));
+            qParams.put("platform", rParams.getString("platform"));
+            qParams.put("title", rParams.getString("title"));
+            qParams.put("content", rParams.getString("content"));
+            qParams.put("status", rParams.getString("status"));
+            qParams.put("is_reach", rParams.getString("is_reach"));
+            qParams.put("remark", rParams.getString("remark"));
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+
+            Map<String, String> cParams = new HashMap<String, String>();
+            cParams.put("source", rParams.getString("source"));
+            Map<String, String> huaweiConfig = simpleMybatisDao.selectOne("push.huawei.queryPushHuaweiConfig", cParams, Map.class);
+            if (huaweiConfig != null) {
+                qParams.put("app_id", huaweiConfig.get("app_id"));
+                getLogger().info(new StringBuffer("华为(a)推送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                List<Map> huaweiRecordList = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiRecord", qParams, Map.class);
+                if (huaweiRecordList == null) {
+                    result.put("status", -1);
+                    result.put("message", "暂无华为推送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", huaweiRecordList);
+                    result.put("count", huaweiRecordList.size());
+                }
+                getLogger().info(new StringBuffer("华为(a)推送流水查询，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "获取华为配置信息错误！");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取华为(a)推送记录失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 获取数据库配置信息
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/config")
+    @ResponseBody
+    public String getConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"push_type", "limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_QUERY_CONFIG);
+
+            try {
+                String pushType = rParams.getString("push_type");
+                if (Constants.PT_TYPE_SMS.equals(pushType)) {
+                    result = smsConfig(rParams);
+                } else if (Constants.PT_TYPE_MAIL.equals(pushType)) {
+                    result = mailConfig(rParams);
+                } else if (Constants.PT_TYPE_JIGUANG.equals(pushType)) {
+                    result = jiguangConfig(rParams);
+                } else if (Constants.PT_TYPE_HUAWEI.equals(pushType)) {
+                    result = huaweiConfig(rParams);
+                } else if (Constants.PT_TYPE_VIVO.equals(pushType)) {
+                    result = vivoConfig(rParams);
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "push_type does not exist!");
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error(rParams.getString("push_type") + "获取配置信息，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 短信配置信息列表
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject smsConfig(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+
+            getLogger().info("获取短信配置信息，参数： {}" + rParams);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Integer dataCount = simpleMybatisDao.selectOne("push.sms.queryPushSmsConfigCount", qParams, Integer.class);
+            List<Map> smsConfigList = simpleMybatisDao.selectList("push.sms.queryPushSmsConfig", qParams, Map.class);
+            if (smsConfigList != null) {
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", smsConfigList);
+                result.put("total", dataCount);
+                result.put("count", smsConfigList.size());
+                getLogger().info(new StringBuffer("获取短信配置信息，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "sms config is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取短信配置信息，失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 邮件配置信息列表
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject mailConfig(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+
+            getLogger().info("获取邮件配置信息，参数： {}" + rParams);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Integer dataCount = simpleMybatisDao.selectOne("push.mail.queryPushMailConfigCount", qParams, Integer.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.mail.queryPushMailConfig", qParams, Map.class);
+            if (mailConfigList != null) {
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", mailConfigList);
+                result.put("total", dataCount);
+                result.put("count", mailConfigList.size());
+                getLogger().info(new StringBuffer("获取邮件配置信息，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "mail config is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取邮件配置信息，失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 极光配置信息列表
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject jiguangConfig(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+
+            getLogger().info("获取极光配置信息，参数： {}" + rParams);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Integer dataCount = simpleMybatisDao.selectOne("push.jiguang.queryPushJgConfigCount", qParams, Integer.class);
+            List<Map> jiguangConfigList = simpleMybatisDao.selectList("push.jiguang.queryPushJgConfig", qParams, Map.class);
+            if (jiguangConfigList != null) {
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", jiguangConfigList);
+                result.put("total", dataCount);
+                result.put("count", jiguangConfigList.size());
+                getLogger().info(new StringBuffer("获取极光配置信息，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "jiguang config is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取极光配置信息，失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 华为配置信息列表
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject huaweiConfig(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+
+            getLogger().info("获取华为配置信息，参数： {}" + rParams);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Integer dataCount = simpleMybatisDao.selectOne("push.huawei.queryPushHuaweiConfigCount", qParams, Integer.class);
+            List<Map> jiguangConfigList = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiConfig", qParams, Map.class);
+            if (jiguangConfigList != null) {
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", jiguangConfigList);
+                result.put("total", dataCount);
+                result.put("count", jiguangConfigList.size());
+                getLogger().info(new StringBuffer("获取华为配置信息，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "huawei config is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取华为配置信息，失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * vivo配置信息列表
+     *
+     * @param rParams
+     * @return
+     */
+    public JSONObject vivoConfig(JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+            String limit = rParams.getString("limit");
+            JSONObject qParams = new JSONObject();
+
+            if (!"-1".equals(limit)) {
+                qParams.put("pos", rParams.getInteger("pos"));
+                qParams.put("limit", Integer.valueOf(limit));
+            }
+            qParams.put("source", rParams.getString("source"));
+
+            getLogger().info("获取vivo配置信息，参数： {}" + rParams);
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Integer dataCount = simpleMybatisDao.selectOne("push.vivo.queryPushVivoConfigCount", qParams, Integer.class);
+            List<Map> jiguangConfigList = simpleMybatisDao.selectList("push.vivo.queryPushVivoConfig", qParams, Map.class);
+            if (jiguangConfigList != null) {
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", jiguangConfigList);
+                result.put("total", dataCount);
+                result.put("count", jiguangConfigList.size());
+                getLogger().info(new StringBuffer("获取vivo配置信息，结果：").append(result.toJSONString()).toString());
+            } else {
+                result.put("status", -1);
+                result.put("message", "vivo config is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取vivo配置信息，失败：{}", e.getMessage());
+        }
+        return result;
+    }
+
+
+
+    /**
+     * 新增配置
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/config/add")
+    @ResponseBody
+    private String addConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"push_type"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            String pushType = rParams.getString("push_type");
+            if (Constants.PT_TYPE_SMS.equals(pushType)) {
+                result = addSmsConfig(rParams);
+            } else if (Constants.PT_TYPE_MAIL.equals(pushType)) {
+                result = addMailConfig(rParams);
+            } else if (Constants.PT_TYPE_JIGUANG.equals(pushType)) {
+                result = addJgConfig(rParams);
+            } else if (Constants.PT_TYPE_HUAWEI.equals(pushType)) {
+                result = addHuaweiConfig(rParams);
+            } else if (Constants.PT_TYPE_VIVO.equals(pushType)) {
+                result = addVivoConfig(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "push_type does not exist!");
+            }
+
+        }
+        return result.toString();
+    }
+
+    /**
+     * 保存短信配置
+     * @param rParams
+     * @return
+     */
+    public JSONObject addSmsConfig(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"sms_tid", "sms_pwd", "sms_platform", "sms_source", "enabled"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_ADD_SMS_CONFIG);
+
+            getLogger().info(new StringBuffer("保存短信配置，参数：").append(JSONObject.toJSONString(rParams)).toString());
+            try {
+
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> cParams = new HashMap<String, String>();
+                cParams.put("platform", rParams.getString("sms_platform"));
+                cParams.put("source", rParams.getString("sms_source"));
+                Map<String, String> smsConfig = simpleMybatisDao.selectOne("push.sms.verifySmsConfig", cParams, Map.class);
+
+                if (smsConfig != null) {
+                    result.put("status", "-1");
+                    result.put("message", "config already exists!");
+                } else {
+                    SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+                    result = smsPushService.addConfig(rParams);
+                    getLogger().info("保存短信配置，成功：{}", result.toString());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("保存短信配置，失败：{}", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 保存邮件配置
+     * @param rParams
+     * @return
+     */
+    public JSONObject addMailConfig(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"smtp_host", "from_mail", "from_mail_pwd", "source", "enabled"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_ADD_MAIL_CONFIG);
+
+            getLogger().info(new StringBuffer("保存邮件配置，参数：").append(JSONObject.toJSONString(rParams)).toString());
+            try {
+                MailPushService mailPushService = SpringUtil.getBean("mailPushService", MailPushService.class);
+                result = mailPushService.addConfig(rParams);
+                getLogger().info("保存邮件配置，成功：{}", result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("保存邮件配置，失败：{}", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 保存极光配置
+     * @param rParams
+     * @return
+     */
+    public JSONObject addJgConfig(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"app_key", "master_secret", "enabled", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_ADD_JIGUANG_CONFIG);
+
+            getLogger().info(new StringBuffer("保存极光配置，参数：").append(JSONObject.toJSONString(rParams)).toString());
+            try {
+                JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+                result = jgPushService.addConfig(rParams);
+                getLogger().info("保存极光配置，成功：{}", result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("保存极光配置，失败：{}", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 保存华为配置
+     * @param rParams
+     * @return
+     */
+    public JSONObject addHuaweiConfig(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"app_id", "app_secret", "app_pkg", "source", "enabled"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_ADD_HUAWEI_CONFIG);
+
+            getLogger().info(new StringBuffer("保存华为配置，参数：").append(JSONObject.toJSONString(rParams)).toString());
+            try {
+                HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+                result = huaweiPushService.addConfig(rParams);
+                getLogger().info("保存华为配置，成功：{}", result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("保存华为配置，失败：{}", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 保存vivo配置
+     * @param rParams
+     * @return
+     */
+    public JSONObject addVivoConfig(JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"app_id", "app_key", "app_secret", "source", "enabled"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_ADD_VIVO_CONFIG);
+
+            getLogger().info(new StringBuffer("保存vivo配置，参数：").append(JSONObject.toJSONString(rParams)).toString());
+            try {
+                VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+                result = vivoPushService.addConfig(rParams);
+                getLogger().info("保存vivo配置，成功：{}", result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("保存vivo配置，失败：{}", e.getMessage());
+            }
+
+        }
+        return result;
+    }
+
+    /**
+     * 更新配置redis缓存
+     *
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/config/redis_update")
+    @ResponseBody
+    private String updateRedisConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) throws Exception {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"push_type"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_ASSEMBLE_REFRESH_REDIS_CONFIG);
+
+            String pushType = rParams.getString("push_type");
+            if (Constants.PT_TYPE_SMS.equals(pushType)) {
+                result = updateSmsRedisConfig(rParams);
+            } else if (Constants.PT_TYPE_MAIL.equals(pushType)) {
+                result = updateMailRedisConfig(rParams);
+            } else if (Constants.PT_TYPE_JIGUANG.equals(pushType)) {
+                result = updateJgRedisConfig(rParams);
+            } else if (Constants.PT_TYPE_HUAWEI.equals(pushType)) {
+                result = updateHuaweiRedisConfig(rParams);
+            } else if (Constants.PT_TYPE_VIVO.equals(pushType)) {
+                result = updateVivoRedisConfig(rParams);
+            } else {
+                result.put("status", -1);
+                result.put("message", "push_type does not exist!");
+            }
+
+        }
+        return result.toString();
+    }
+
+
+    public JSONObject updateSmsRedisConfig(JSONObject rParams){
+        JSONObject result = new JSONObject();
+        try {
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> smsConfigList = simpleMybatisDao.selectList("push.sms.queryPushSmsConfig", params, Map.class);
+            if(smsConfigList != null) {
+                result = RedisUtil.getInstance().updateSmsConfigToRedis(Constants.REDIS_SMS_CONFIG, smsConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "sms configs is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("SMS redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 更新邮件redis缓存
+     * @param rParams
+     * @return
+     */
+    public JSONObject updateMailRedisConfig(JSONObject rParams){
+        JSONObject result = new JSONObject();
+        try {
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.mail.queryPushMailConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateMailConfigToRedis(Constants.REDIS_MAIL_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "mail configs is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("MAIL redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 更新极光redis缓存
+     * @param rParams
+     * @return
+     */
+    public JSONObject updateJgRedisConfig(JSONObject rParams){
+        JSONObject result = new JSONObject();
+        try {
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.jiguang.queryPushJgConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateJiguangConfigToRedis(Constants.REDIS_JG_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "jiguang configs is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("jiguang redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 更新华为redis缓存
+     * @param rParams
+     * @return
+     */
+    public JSONObject updateHuaweiRedisConfig(JSONObject rParams){
+        JSONObject result = new JSONObject();
+        try {
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateHuaweiConfigToRedis(Constants.REDIS_HUAWEI_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "huawei configs is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("HUAWEI redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 更新vivo redis缓存
+     * @param rParams
+     * @return
+     */
+    public JSONObject updateVivoRedisConfig(JSONObject rParams){
+        JSONObject result = new JSONObject();
+        try {
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.vivo.queryPushVivoConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateVivoConfigToRedis(Constants.REDIS_VIVO_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "vivo configs is empty!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("vivo redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * 获取redis缓存公共接口
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/redis_config")
+    @ResponseBody
+    public String getRedisConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+
+        String[] argSymbols = { "redis_key"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            String rKey = rParams.getString("redis_key");
+            try {
+                result = RedisUtil.getInstance().getRedisConfigs(rKey);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取SMSredis缓存，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 短信统计
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/sms/statistics")
+    @ResponseBody
+    public String getSmsStatistics (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        try {
+
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> smsStatistics = simpleMybatisDao.selectList("push.sms.querySmsStatistics", null, Map.class);
+            if(smsStatistics != null){
+
+                List<String> kAxisList = Lists.newArrayList();
+                List<String> vAxisList = Lists.newArrayList();
+
+                List<Integer> yAxisList = Lists.newArrayList();
+                List<Integer> eAxisList = Lists.newArrayList();
+
+                for(int i =0; i<smsStatistics.size(); i++) {
+                    kAxisList.add(smsStatistics.get(i).get("platform").toString());
+                    vAxisList.add(smsStatistics.get(i).get("remark").toString());
+                    yAxisList.add(Integer.valueOf(smsStatistics.get(i).get("yCount").toString()));
+                    eAxisList.add(Integer.valueOf(smsStatistics.get(i).get("eCount").toString()));
+                }
+
+                Map data = new HashMap();
+                data.put("kAxisList", kAxisList);
+                data.put("vAxisList", vAxisList);
+                data.put("yAxisList", yAxisList);
+                data.put("eAxisList", eAxisList);
+
+                result.put("status", 0);
+                result.put("message", "ok");
+                result.put("data", data);
+            }else {
+                result.put("status", -1);
+                result.put("message", "sms statistics is empty!");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("获取短信统计，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result.toString();
+    }
+}

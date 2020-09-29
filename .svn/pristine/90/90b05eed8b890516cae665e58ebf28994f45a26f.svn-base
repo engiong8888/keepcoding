@@ -1,0 +1,50 @@
+package cn.gnw.push.api.entity.iosmdm;
+
+import java.io.Serializable;
+
+public class DeviceTemp implements Serializable {
+
+    private static final long serialVersionUID = -7048625537017892345L;
+
+    private String deviceTempId;
+    /**设备标志**/
+    private String deviceFlag;
+    /**设备编号（和Device主键对应）**/
+    private String deviceId;
+    /**回调地址**/
+    private String callBack;
+
+	public String getDeviceFlag() {
+		return deviceFlag;
+	}
+
+	public void setDeviceFlag(String deviceFlag) {
+		this.deviceFlag = deviceFlag;
+	}
+
+	public String getDeviceTempId() {
+        return deviceTempId;
+    }
+
+    public void setDeviceTempId(String deviceTempId) {
+        this.deviceTempId = deviceTempId;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+	public String getCallBack() {
+		return callBack;
+	}
+
+	public void setCallBack(String callBack) {
+		this.callBack = callBack;
+	}
+
+   
+}

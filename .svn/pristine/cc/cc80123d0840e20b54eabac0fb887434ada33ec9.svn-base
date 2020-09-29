@@ -1,0 +1,58 @@
+package cn.gnw.push.websocket.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.SocketIOServer;
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+
+import java.util.UUID;
+
+/**
+ * 关闭旧客户端队列监听
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-22 16:44
+ */
+public class ToSendNoticeClose extends BaseBS implements ChannelAwareMessageListener {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private int number = 1;
+
+    public ToSendNoticeClose(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        try {
+            JSONObject object = JSON.parseObject(new String(message.getBody()));
+            logger.info(new StringBuffer("待发送WebSocket队列监听器[").append(this.number).append("]接收数据：").append(object).toString());
+            String clientId = object.getString("client_id");
+            if (null != clientId) {
+                WSConfig config = SpringBeanConfig.getBean(WSConfig.class);
+                SocketIOServer server = config.getServer();
+                SocketIOClient client = server.getClient(UUID.fromString(clientId));
+                if (null != client) {
+                    client.disconnect();
+                    getLogger().info(new StringBuffer("close old client success : ").append(object).toString());
+                }
+            } else {
+                getLogger().error(new StringBuffer("Queue ToSendNoticeClose No Find ClientId :")
+                        .append(object).toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+}

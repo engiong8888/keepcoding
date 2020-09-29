@@ -1,0 +1,90 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.MiPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 小米推送监听器
+ *
+ * @author: chengzd
+ * @mail
+ * @date: 2019-07-04 14:36
+ */
+public class ToPushMiListener extends BaseBS implements ChannelAwareMessageListener {
+
+    MiPushService miPushService = SpringUtil.getBean("miPushService", MiPushService.class);
+
+    private int number = 1;
+    public ToPushMiListener(int number) {
+        this.number = number;
+    }
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送小米消息监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String pushType = msg.getString("push_type");
+            String title = msg.getString("title");
+            String content = msg.getString("content");
+            String description = msg.getString("description");
+            String source = msg.getString("source");
+            String platform = msg.getString("platform");
+            List<String> alias = (List<String>)msg.get("alias");
+            List<String> accounts = (List<String>) msg.get("accounts");
+            List<String> topics = (List<String>) msg.get("topics");
+            List<String> regIds = (List<String>) msg.get("reg_ids");
+            Map<String, String> extra = (Map<String, String>)msg.get("extra");
+            String androidAppKey = msg.getString("android_app_key");
+            String androidAppSecret = msg.getString("android_app_secret");
+            String androidPackage = msg.getString("android_package");
+            String iosAppKey = msg.getString("ios_app_key");
+            String iosAppSecret = msg.getString("ios_app_secret");
+
+            JSONObject params = new JSONObject();
+            params.put("push_type", pushType);
+            params.put("title", title);
+            params.put("content", content);
+            params.put("description", description);
+            params.put("source", source);
+            params.put("platform", platform);
+            params.put("alias", alias);
+            params.put("accounts", accounts);
+            params.put("topics", topics);
+            params.put("reg_ids", regIds);
+            params.put("extra", extra);
+
+            params.put("android_app_key", androidAppKey);
+            params.put("android_app_secret", androidAppSecret);
+            params.put("android_package",androidPackage);
+            params.put("ios_app_key", iosAppKey);
+            params.put("ios_app_secret", iosAppSecret);
+            miPushService.sendXiaoMi(params);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

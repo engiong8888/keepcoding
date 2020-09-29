@@ -1,0 +1,66 @@
+(function() {
+	$(document).ready(function() {
+
+        /**
+		 * 登录
+         */
+		$("#login").on('click', function() {
+			var warmColor = '#c00';
+	    	var tipsDirection = 2;
+			var username = $("#username").val();
+			var password = $("#password").val();
+			if(username == '') {
+				layer.tips('请输入用户名', '#username', {
+	    			tips: [tipsDirection, warmColor]
+	    		});
+				$("#username").focus();
+				return;
+			}
+			if(password == '') {
+				layer.tips('请输入密码！', '#password', {
+	    			tips: [tipsDirection, warmColor]
+	    		});
+				$("#password").focus();
+				return;
+			}
+			$.ajax({
+				type: "POST",
+		        url: ctx + '/payman/system/login/check',
+		        data: {
+					"username": username,
+					"password": hex_md5(password)
+				},
+		        dataType: "json",
+		        success: function(data) {
+		        	if(data.status == 0) {
+		        		location.href = ctx + '/payman/system/index';
+		        	} else if(data.status == -1) {
+	        			layer.tips(data.message, '#username', {
+			    			tips: [tipsDirection, warmColor]
+			    		});
+	        			$("#username").focus();
+	        		} else if(data.status == -2) {
+	        			layer.tips(data.message, '#password', {
+			    			tips: [tipsDirection, warmColor]
+			    		});
+		        		$("#password").focus();
+	        		} else {
+	        			layer_alert_error(data.message);
+	        		}
+		        },
+		        error: function(data) {
+					layer_alert_error('服务器处理异常!');
+				}
+		    });
+		});
+		
+		$(document).keydown(function(event) {
+			if(event.keyCode == 13) {
+				$("#login").click();
+			}
+		});
+	});
+})();
+
+
+

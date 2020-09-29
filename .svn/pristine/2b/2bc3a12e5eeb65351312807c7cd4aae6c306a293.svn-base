@@ -1,0 +1,211 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.provider.service.MailPushService;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 邮件推送
+ * @author: chengzd
+ * @mail    chengzd@txtws.com
+ * @date: 2018-09-19 8:59
+ */
+@RestController
+@RequestMapping(value = "/push/mail")
+public class MailPushController extends BaseBS {
+    /**
+     * 邮件发送
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"to", "subject", "message_text", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_MAIL_SEND);
+            Map<String, String> params = new HashMap<>();
+            params.put("to", rParams.getString("to"));
+            params.put("subject", rParams.getString("subject"));
+            params.put("messageText", rParams.getString("message_text"));
+            MailPushService mailPushService = SpringUtil.getBean("mailPushService", MailPushService.class);
+
+            getLogger().info("1111111111");
+            String str ="[INFO] 2019-07-15 19:23:17,412 [443e3e454f1aa965,443e3e454f1aa965,] [http-nio-9500-exec-2] c.g.p.p.c.ApplePayController [czd.gnw-pay-provider] - 苹果支付商品登记，参数：{\"amount\":\"0.01\",\"product_id\":\"669a95cd71f74e7b9dfd0356a3c84001\",\"platform_name\":\"格雷守护\",\"product_name\":\"测试商品\",\"platform\":\"glsh_app\"}";
+
+            System.out.println(str);
+            getLogger().info("2222222");
+            try{
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_MAIL_CONFIG);
+                if(result.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取邮件配置config [Redis][key]{").append(Constants.REDIS_MAIL_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String mailStr = result.getString("data");
+                    if (!StringUtil.isBlank(mailStr)) {
+                        JSONObject mailConfig = JSONObject.parseObject(mailStr);
+                        String fromMail = mailConfig.getString("from_mail");
+                        String fromMailPwd = mailConfig.getString("from_mail_pwd");
+                        params.put("from_mail", fromMail);
+                        params.put("from_mail_pwd", fromMailPwd);
+                        getLogger().info("邮件推送，参数：{}", JSONObject.toJSONString(params));
+                        result = mailPushService.send(params);
+                        getLogger().info("邮件推送，结果：{}", result.toJSONString());
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "mail config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        getLogger().debug("邮件推送，结果: {}" + result.toString());
+        return result.toString();
+    }
+
+
+    /**
+     * 更新MAIL redis缓存
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/update/mail_config")
+    @ResponseBody
+    public String updateRedisMailConfig(HttpServletRequest request, HttpServletResponse response){
+        JSONObject result = new JSONObject();
+
+        try {
+//            String source = rParams.getString("source");
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.mail.queryPushMailConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateMailConfigToRedis(Constants.REDIS_MAIL_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "mail configs is null");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("MAIL redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result.toString();
+    }
+
+    /**
+     * 获取MAIL redis缓存
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/mail_config")
+    @ResponseBody
+    public String getRedisMailConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        String rKey = rParams.getString("source");
+        String[] argSymbols = {"source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_MAIL_QUERY_CONFIG);
+//            Result result1 = new Result().successResult(rParams);
+//            System.out.println(result1.toString());
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rKey, Constants.REDIS_MAIL_CONFIG);
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取MAIL redis缓存，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 获取邮件发送记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushMailRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_MAIL_QUERY_RECORD);
+            try {
+
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+
+                if(!"-1".equals(limit)) {
+                    qParams.put("pos", rParams.getInteger("pos"));
+                    qParams.put("limit", Integer.valueOf(limit));
+                }
+                qParams.put("source", rParams.getString("source"));
+                qParams.put("to_mail", rParams.getString("to_mail"));
+                qParams.put("subject", rParams.getString("subject"));
+                qParams.put("remark", rParams.getString("remark"));
+                getLogger().info(new StringBuffer("邮件发送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Integer dataCount = simpleMybatisDao.selectOne("push.mail.queryPushMailRecordCount", qParams, Integer.class);
+                List<Map> smsRecordList = simpleMybatisDao.selectList("push.mail.queryPushMailRecord", qParams, Map.class);
+                if (smsRecordList == null) {
+                    result.put("status",-1);
+                    result.put("message","暂无邮件发送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", smsRecordList);
+                    result.put("total", dataCount);
+                    result.put("count", smsRecordList.size());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取邮件发送记录失败：{}", e.getMessage());
+            }
+        }
+        getLogger().info(new StringBuffer("邮件发送流水查询，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+}

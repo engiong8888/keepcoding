@@ -1,0 +1,105 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.provider.service.SmsPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 待发送短信（阿里云）监听器
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-18 17:20
+ */
+
+public class ToPushAliyunSmsListener extends BaseBS implements ChannelAwareMessageListener {
+
+    SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+    private int number = 1;
+    public ToPushAliyunSmsListener(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送短信监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        boolean isNeedReInQueue = true;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        int count = 1;
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String errCount = msg.getString("count");
+            if(!StringUtil.isBlank(errCount)){
+                count = Integer.parseInt(errCount);
+            }
+            String recordId = msg.getString("record_id");
+            String keyId = msg.getString("key_id");
+            String keySecret = msg.getString("key_secret");
+            String phone = msg.getString("phone");
+            String tempCode = msg.getString("temp_code");
+            String signName = msg.getString("sign_name");
+            String content = msg.getString("content");
+            String remark = msg.getString("remark");
+            JSONObject tempParams = msg.getJSONObject("temp_params");
+            JSONObject params = new JSONObject();
+            params.put("record_id", recordId);
+            params.put("key_id", keyId);
+            params.put("key_secret", keySecret);
+            params.put("phone", phone);
+            params.put("temp_code", tempCode);
+            params.put("sign_name", signName);
+            params.put("content", content);
+            params.put("remark", remark);
+            params.put("temp_params", tempParams);
+            JSONObject result = smsPushService.sendAliyunSms(params);
+
+            // 不会使用备用方案（备用方案也需要参数）
+            // 发送成功 1.参数缺少，2.业务限流，3.黑名单管控
+            if ("OK".equals(result.getString("Code"))
+                    || "isv.TEMPLATE_MISSING_PARAMETERS".equals(result.getString("Code"))
+                    || "isv.BUSINESS_LIMIT_CONTROL".equals(result.getString("Code"))
+                    || "isv.BLACK_KEY_CONTROL_LIMIT".equals(result.getString("Code"))) {
+                isNeedReInQueue = false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+            isNeedReInQueue = true;
+        } finally {
+            if(isNeedReInQueue) {
+                if(count < 3) {
+                    msg.put("count", ++count);
+                    rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_ALIYUN_SMS_QUEUE, msg);
+                } else {
+                    getLogger().error(new StringBuffer("异常消息重新请求次数超过3次，进入异常队列：").append(msg.toJSONString()).toString());
+//                    rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_ALIYUN_SMS_QUEUE_ERROR, msg);
+                    Map<String, String> params = new HashMap<>();
+                    params.put("mobile", msg.getString("phone"));
+                    params.put("content", msg.getString("content"));
+                    params.put("platform", msg.getString("platform"));
+                    params.put("source", msg.getString("source"));
+                    smsPushService.errorSend(params);
+                }
+            }
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

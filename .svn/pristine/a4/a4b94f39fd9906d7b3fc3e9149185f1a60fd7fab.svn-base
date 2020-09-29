@@ -1,0 +1,332 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.api.utils.StringUtil;
+import cn.gnw.push.provider.config.SmsConfig;
+import cn.gnw.push.provider.service.SmsPushService;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 消息推送(傲众云)
+ * @author: chengzd
+ * @mail: chengzd@txtws.com
+ * @date: 2018-09-17 11:04
+ */
+@RestController
+@RequestMapping(value = "/push/sms")
+public class SmsPushController extends BaseBS {
+
+    /**
+     * 短信发送
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        JSONObject rResult = new JSONObject();
+        String[] argSymbols = {"mobile", "content", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_SMS_SEND);
+
+            Map<String, String> params = new HashMap<>();
+            params.put("source", rParams.getString("source"));
+            params.put("mobile", rParams.getString("mobile"));
+//            params.put("phone", rParams.getString("mobile"));
+            params.put("content", rParams.getString("content"));
+            SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+            try{
+//                短信验证时间内发送次数
+//                String mobile = rParams.getString("mobile");
+//                StringBuffer key = new StringBuffer(Constants.REDIS_SMS_SEND_PHONE)
+//                        .append(":").append(mobile);
+//                String phone = RedisUtil.getInstance().getSmsPhoneFromRedis(key.toString());
+//
+//                if(StringUtil.isBlank(phone)) {
+
+                rResult = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_SMS_CONFIG);
+                if (rResult.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取短信配置config [Redis][key]{").append(Constants.REDIS_SMS_CONFIG)
+                            .append("}[config]{").append(rResult).append("}").toString());
+                    String smsStr = rResult.getString("data");
+                    JSONObject smsConfig = JSONObject.parseObject(smsStr);
+                    String smsTid = smsConfig.getString("sms_tid");
+                    String smsPwd = smsConfig.getString("sms_pwd");
+                    params.put("sms_tid", smsTid);
+                    params.put("sms_pwd", smsPwd);
+                    getLogger().info("短信推送，参数：{} ", JSONObject.toJSONString(params));
+                    result = smsPushService.send(params);
+                    getLogger().info("短信推送，结果：{} ", result.toJSONString());
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "SMS config in redis does not exist");
+                }
+//                } else {
+//                    result.put("status", -1);
+//                    result.put("message", "您的操作过于频繁，请稍后再试");
+//                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("短信推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * 短信发送(阿里云)
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/message/send")
+    @ResponseBody
+    private String aliyunSend(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        JSONObject rResult = new JSONObject();
+        String[] argSymbols = {"temp_num", "phone", "platform"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            SmsConfig smsConfig = SpringUtil.getBean("smsConfig", SmsConfig.class);
+            try{
+                SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+                String source = smsConfig.getSource();
+                if(!Constants.SMS_SOURCE_01.equals(source)){
+                    source = Constants.SMS_SOURCE_99;    //默认阿里云短信
+                    JSONObject params = new JSONObject();
+                    params.put("source", source);
+                    params.put("platform", rParams.getString("platform"));
+                    params.put("temp_code", rParams.getString("temp_code"));
+                    params.put("phone", rParams.getString("phone"));
+                    params.put("temp_params", rParams.getJSONObject("temp_params"));
+
+                    JSONObject tempParams = rParams.getJSONObject("temp_params");
+                    //获取模板
+                    String tempNum = rParams.getString("temp_num");
+                    SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                    Map<String, String> tParams = new HashMap<>();
+                    tParams.put("temp_num", tempNum);
+                    Map<String, String> smsTemplate = simpleMybatisDao.selectOne("push.sms.queryPushSmsTemplate", tParams, Map.class);
+                    if(smsTemplate != null){
+                        String tempContent = smsTemplate.get("temp_content");
+                        String tempCode = smsTemplate.get("temp_code");
+                        StringBuffer remark = new StringBuffer();
+                        remark = remark.append(tempCode);
+                        if(tempParams != null){
+                            tempContent = StringUtil.buildStr(tempContent, tempParams);
+                            remark.append(":").append(tempParams);
+                        }
+                        params.put("temp_code", tempCode);
+                        params.put("content", tempContent);
+                        params.put("remark", remark.toString());
+
+                        rResult = RedisUtil.getInstance().getSmsConfigFromRedis(rParams.getString("platform"), source, Constants.REDIS_SMS_CONFIG);
+                        if (rResult.getIntValue("status") == 0) {
+                            getLogger().info(new StringBuffer("获取短信配置config [Redis][key]{").append(Constants.REDIS_SMS_CONFIG)
+                                    .append("}[config]{").append(rResult).append("}").toString());
+                            String smsStr = rResult.getString("data");
+                            JSONObject smsConfigData = JSONObject.parseObject(smsStr);
+                            String accessKeyId = smsConfigData.getString("sms_tid");
+                            String accessKeySecret = smsConfigData.getString("sms_pwd");
+                            String signName = smsConfigData.getString("remark");
+                            params.put("key_id", accessKeyId);
+                            params.put("key_secret", accessKeySecret);
+                            params.put("sign_name", signName);
+
+                            getLogger().info("短信推送，参数：{} ", JSONObject.toJSONString(params));
+                            result = smsPushService.aliyunSend(params);
+                            getLogger().info("短信推送，结果：{} ", result.toJSONString());
+                        } else {
+                            result.put("status", -1);
+                            result.put("message", "SMS config in redis does not exist");
+                        }
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "SMS template does not exist");
+                    }
+                } else {    //source:01 采用傲众云方案
+                    //获取模板
+                    JSONObject tempParams = rParams.getJSONObject("temp_params");
+                    String tempNum = rParams.getString("temp_num");
+                    SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                    Map<String, String> tParams = new HashMap<>();
+                    tParams.put("temp_num", tempNum);
+                    Map<String, String> smsTemplate = simpleMybatisDao.selectOne("push.sms.queryPushSmsTemplate", tParams, Map.class);
+                    if(smsTemplate != null){
+                        String tempContent = smsTemplate.get("temp_content");
+                        if(tempParams != null){
+                            tempContent = StringUtil.buildStr(tempContent, tempParams);
+                        }
+                        source = Constants.SMS_SOURCE_01;    //傲众云短信
+                        Map<String, String> params = new HashMap<>();
+                        params.put("mobile", rParams.getString("phone"));
+                        params.put("content", tempContent);
+                        params.put("platform", rParams.getString("platform"));
+                        params.put("source", source);
+                        result = smsPushService.errorSend(params);
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "SMS template does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("短信推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+
+        return result.toString();
+    }
+
+
+    /**
+     * 更新SMSredis缓存
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/update/sms_config")
+    @ResponseBody
+    public String updateRedisSmsConfig(HttpServletRequest request, HttpServletResponse response){
+        JSONObject result = new JSONObject();
+
+        try {
+//            String source = rParams.getString("source");
+//            Map<String, String> params = new HashMap<String, String>();
+//            params.put("source", source);
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> smsConfigList = simpleMybatisDao.selectList("push.sms.queryPushSmsConfig", params, Map.class);
+
+            if(smsConfigList != null) {
+                result = RedisUtil.getInstance().updateSmsConfigToRedis(Constants.REDIS_SMS_CONFIG, smsConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "sms configs is null");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("SMS_redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result.toString();
+    }
+
+    /**
+     * 获取SMSredis缓存
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/sms_config")
+    @ResponseBody
+    public String getRedisSmsConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        String rKey = rParams.getString("source");
+        String[] argSymbols = {"source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_SMS_QUERY_CONFIG);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rKey, Constants.REDIS_SMS_CONFIG);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取SMSredis缓存，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 获取短信发送记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushSmsRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_SMS_QUERY_RECORD);
+            try {
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+                if(!"-1".equals(limit)) {
+                    qParams.put("limit", Integer.valueOf(limit));
+                    qParams.put("pos", rParams.getInteger("pos"));
+                }
+                qParams.put("phone", rParams.getString("phone"));
+                qParams.put("source", rParams.getString("source"));
+                qParams.put("content", rParams.getString("content"));
+                qParams.put("remark", rParams.getString("remark"));
+                getLogger().info(new StringBuffer("短信发送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Integer dataCount = simpleMybatisDao.selectOne("push.sms.queryPushSmsRecordCount", qParams, Integer.class);
+                List<Map> smsRecordList = simpleMybatisDao.selectList("push.sms.queryPushSmsRecord", qParams, Map.class);
+                if (smsRecordList == null) {
+                    result.put("status",-1);
+                    result.put("message","暂无短信发送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", smsRecordList);
+                    result.put("total", dataCount);
+                    result.put("count", smsRecordList.size());
+                }
+            } catch (Exception e) {
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+                e.printStackTrace();
+                getLogger().error("获取短信发送记录失败：{}", e.getMessage());
+            }
+        }
+        getLogger().info(new StringBuffer("短信发送流水查询，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+}

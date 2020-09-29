@@ -1,0 +1,80 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.Data;
+import cn.gnw.push.api.entity.websocket.DeviceStatus;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import cn.gnw.push.websocket.provider.utils.PushWSUtil;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.HandshakeData;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.listener.ConnectListener;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 连接
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-10-31 14:37
+ */
+public class WSConnectListener extends BaseBS implements ConnectListener {
+    @Override
+    public void onConnect(SocketIOClient socketIOClient) {
+        HandshakeData handshakeData = socketIOClient.getHandshakeData();
+        Map<String, List<String>> map = handshakeData.getUrlParams();
+        //组装设备上线消息
+        DeviceStatus deviceStatus = new DeviceStatus();
+        Data data = new Data();
+        List<String> dataList = new ArrayList<>();
+        String deviceId = "";
+        String channel = "";
+        if (map.containsKey("device_id")) {
+            deviceId = map.get("device_id").get(0);
+            dataList.add(deviceId);
+            channel = map.containsKey("channel") ? map.get("channel").get(0) : WSConstants.WS_CHANNEL_DATA;//默认数据通道
+        } else {
+            getLogger().error("Lost Of Parameter,onConnect : " + map.toString());
+            socketIOClient.disconnect();
+        }
+        data.setDeviceId(dataList);
+        deviceStatus.setCommandNo(WSConstants.COMMAND_NO_ONLINE);
+        deviceStatus.setCommandCode(WSConstants.REPORT_DEVICE_ONLINE);
+        deviceStatus.setVersion("1.0.0");
+        deviceStatus.setCreateTime(System.currentTimeMillis());
+        deviceStatus.setData(data);
+        //将设备上线消息发送至队列(数据上报通道)
+        if (channel.equals(WSConstants.WS_CHANNEL_DATA)) {
+            PushWSUtil.getInstance().sendDeviceMsg(JSON.parseObject(JSON.toJSONString(deviceStatus)));
+        }
+        //将绑定关系发至状态队列 写入数据库
+        JSONObject object = new JSONObject();
+        object.put("command_no", WSConstants.COMMAND_NO_ONLINE);
+        object.put("device_id", deviceId);
+        object.put("client_id", socketIOClient.getSessionId());
+        object.put("platform", map.containsValue("platform") ? map.get("platform").get(0) : 1);
+        object.put("channel", channel);
+        PushWSUtil.getInstance().sendStatusChange(object);
+        //将上线记录保存至redis
+        RedisUtil.getInstance().connectRecord(object);
+        //移入专属Room (设备与指令区分不同Room)
+        socketIOClient.joinRoom(channel);
+        //Redis 刷新心跳
+        RedisUtil.getInstance().keepAlive(object);
+        getLogger().info(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                .append("\nConnect ClientId : ").append(socketIOClient.getSessionId())
+                .append("\nParam : ").append(map.toString())
+                .toString());
+
+//        int onlienSize = SpringBeanConfig.getBean(WSConfig.class).getServer().getAllClients().size();
+//        getLogger().info( "在线人数 : " + onlienSize);
+    }
+}

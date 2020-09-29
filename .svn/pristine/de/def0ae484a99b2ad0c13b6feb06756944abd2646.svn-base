@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mdm">
+
+	<!-- iosmdm推送绑定记录表 -->
+	<resultMap id="iosMdmBindRecord" type="cn.gnw.push.api.entity.iosmdm.IosMdmBindRecord">
+	    <result property="bindRecordId" column="bind_record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="deviceId" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="udid" column="udid" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="pushMagic" column="push_magic" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	    <result property="control" column="control" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="isActivationLockEnabled" column="is_activation_lock_enabled" jdbcType="INTEGER"/>
+		<result property="isCloudBackupEnabled" column="is_cloud_backup_enabled" jdbcType="INTEGER"/>
+		<result property="isDeviceLocatorServiceEnabled" column="is_device_locator_service_enabled" jdbcType="INTEGER"/>
+		<result property="isSupervised" column="is_supervised" jdbcType="INTEGER"/>
+		<result property="topic" column="topic" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="token" column="token" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="unlockToken" column="un_lock_token" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="deviceIdFromDc" column="device_id_from_dc" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+		<result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+	</resultMap>
+	
+	<!-- 临时设备 -->
+	<resultMap id="deviceTemp" type="cn.gnw.push.api.entity.iosmdm.DeviceTemp">
+	    <result property="deviceTempId" column="device_temp_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	    <result property="callBack" column="call_back" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	    <result property="deviceFlag" column="device_flag" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	    <result property="deviceId" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	</resultMap>
+
+	<!-- 命令 -->
+	<resultMap id="record" type="cn.gnw.push.api.entity.iosmdm.Record">
+		<result property="commandId" column="command_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="deviceId" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="command" column="command" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="callBack" column="call_back" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="ctype" column="ctype" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="cvalue" column="cvalue" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="doIt" column="do_it" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="attach" column="attach" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+	</resultMap>
+
+	<!-- 配置文件-->
+	<resultMap id="profile" type="cn.gnw.push.api.entity.iosmdm.Profile">
+		<result property="profileId" column="profile_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="ctype" column="ctype" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="deviceId" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+		<result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+	</resultMap>
+
+	<!-- 推送通知配置-->
+	<resultMap id="iosMdmConfig" type="cn.gnw.push.api.entity.iosmdm.IosMdmConfig">
+		<result property="configId" column="config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="mobileConfig" column="mobile_config" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+		<result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+	</resultMap>
+
+	<!-- 查询iosmdm推送绑定记录表 -->
+	<select id="findBindRecord" parameterType="java.util.Map" resultMap="iosMdmBindRecord">
+		SELECT * FROM t_push_ios_mdm_bind_record
+		WHERE 1 = 1
+		<if test="deviceId != NULL and deviceId != ''">
+			AND device_id = #{deviceId}
+		</if>
+		<if test="udid != NULL and udid != ''">
+			AND udid = #{udid}
+		</if>
+	</select>
+
+	<!-- 查询临时设备表 -->
+	<select id="findDeviceTempBean" parameterType="java.util.Map" resultMap="deviceTemp">
+		SELECT * FROM t_push_ios_mdm_device_temp dt
+		WHERE 1 = 1
+		<if test="deviceId != NULL and deviceId != ''">
+			AND dt.device_id = #{deviceId}
+		</if>
+	</select>
+
+	<!-- 查询命令表-->
+	<select id="findRecordBean" parameterType="java.util.Map" resultMap="record">
+		SELECT * FROM t_push_ios_mdm_record r
+		WHERE 1 = 1
+		<if test="deviceId != NULL and deviceId != ''">
+			AND r.device_id = #{deviceId}
+		</if>
+		<if test="doIt != NULL and doIt != ''">
+			AND r.do_it = #{doIt}
+		</if>
+		order by create_time asc
+	</select>
+
+	<select id="findRecordById" parameterType="java.util.Map" resultMap="record">
+		SELECT * FROM t_push_ios_mdm_record r
+		WHERE r.command_id = #{commandId}
+	</select>
+
+	<!-- 查询iosmdm推送通知配置表-->
+	<select id="findIosMdmConfigBean" parameterType="java.util.Map" resultMap="iosMdmConfig">
+		SELECT * FROM t_push_ios_mdm_config
+		WHERE enabled = '1'
+		<if test="source != NULL and source != ''">
+			AND source = #{source}
+		</if>
+	</select>
+
+	<insert id="addBindRecord" parameterType="java.util.Map">
+		INSERT INTO t_push_ios_mdm_bind_record(bind_record_id, device_id, udid, push_magic, control, is_activation_lock_enabled, is_cloud_backup_enabled,
+			is_device_locator_service_enabled,is_supervised,topic,token,un_lock_token, device_id_from_dc, create_time)
+		VALUES(#{bindRecordId}, #{deviceId}, #{udid}, #{pushMagic}, #{control}, #{isActivationLockEnabled}, #{isCloudBackupEnabled},
+			#{isDeviceLocatorServiceEnabled}, #{isSupervised}, #{topic}, #{token}, #{unlockToken}, #{deviceIdFromDc}, NOW())
+	</insert>
+
+	<update id="updateBindRecord" parameterType="java.util.Map">
+		UPDATE t_push_ios_mdm_bind_record
+		<set>
+			<if test="deviceId != NULL and deviceId != ''">
+				device_id = #{deviceId},
+			</if>
+			<if test="udid != NULL and udid != ''">
+				udid = #{udid},
+			</if>
+			<if test="pushMagic != NULL and pushMagic != ''">
+				push_magic = #{pushMagic},
+			</if>
+			<if test="control != NULL and control != ''">
+				control = #{control},
+			</if>
+			<if test="isActivationLockEnabled != NULL">
+				is_activation_lock_enabled = #{isActivationLockEnabled},
+			</if>
+			<if test="isCloudBackupEnabled != NULL">
+				is_cloud_backup_enabled = #{isCloudBackupEnabled},
+			</if>
+			<if test="isDeviceLocatorServiceEnabled != NULL">
+				is_device_locator_service_enabled = #{isDeviceLocatorServiceEnabled},
+			</if>
+			<if test="isSupervised != NULL">
+				is_supervised = #{isSupervised},
+			</if>
+			<if test="topic != NULL and topic != ''">
+				topic = #{topic},
+			</if>
+			<if test="token != NULL and token != ''">
+				token = #{token},
+			</if>
+			<if test="unlockToken != NULL and unlockToken != ''">
+				un_lock_token = #{unlockToken},
+			</if>
+			<if test="deviceIdFromDc != NULL and deviceIdFromDc != ''">
+				device_id_from_dc = #{deviceIdFromDc},
+			</if>
+			update_time = NOW()
+        </set>
+        where bind_record_id = #{bindRecordId}
+	</update>
+
+	<update id="updateBindRecordByDeviceId" parameterType="java.util.Map">
+		UPDATE t_push_ios_mdm_bind_record
+		<set>
+			<if test="isActivationLockEnabled != NULL">
+				is_activation_lock_enabled = #{isActivationLockEnabled},
+			</if>
+			<if test="isCloudBackupEnabled != NULL">
+				is_cloud_backup_enabled = #{isCloudBackupEnabled},
+			</if>
+			<if test="isDeviceLocatorServiceEnabled != NULL">
+				is_device_locator_service_enabled = #{isDeviceLocatorServiceEnabled},
+			</if>
+			<if test="isSupervised != NULL">
+				is_supervised = #{isSupervised},
+			</if>
+			update_time = NOW()
+		</set>
+		where device_id = #{deviceId}
+	</update>
+
+	<insert id="addRecord" parameterType="java.util.Map">
+		INSERT INTO t_push_ios_mdm_record(command_id, device_id, source, command, call_back, ctype, cvalue, do_it, result, attach, create_time)
+		VALUES(#{commandId}, #{deviceId}, #{source}, #{command}, #{callBack}, #{ctype}, #{cvalue}, #{doIt}, #{result}, #{attach}, NOW())
+	</insert>
+
+	<update id="updateRecord" parameterType="java.util.Map">
+		UPDATE t_push_ios_mdm_record r
+		<trim prefix="set" suffixOverrides=",">
+			<if test="callBack != NULL and callBack != ''">
+				r.call_back = #{callBack},
+			</if>
+			<if test="command != NULL and command != ''">
+				r.command = #{command},
+			</if>
+			<if test="doIt != NULL and doIt != ''">
+				r.do_it = #{doIt},
+			</if>
+			<if test="ctype != NULL and ctype != ''">
+				r.ctype = #{ctype},
+			</if>
+			<if test="cvalue != NULL and cvalue != ''">
+				r.cvalue = #{cvalue},
+			</if>
+			<if test="result != NULL and result != ''">
+				r.result = #{result},
+			</if>
+			<if test="attach != NULL and attach != ''">
+				r.attach = #{attach},
+			</if>
+		</trim>
+		where r.command_id = #{commandId}
+	</update>
+
+	<insert id="addProfile" parameterType="java.util.Map">
+		INSERT INTO t_push_ios_mdm_profile(profile_id, ctype, device_id, result, create_time)
+		VALUES(#{profileId}, #{ctype}, #{deviceId}, #{result}, NOW())
+	</insert>
+
+	<update id="updateProfile" parameterType="java.util.Map">
+		UPDATE t_push_ios_mdm_profile p
+		<set>
+			<if test="ctype != NULL and ctype != ''">
+				p.ctype = #{ctype},
+			</if>
+			<if test="deviceId != NULL and deviceId != ''">
+				p.device_id = #{deviceId},
+			</if>
+			<if test="result != NULL and result != ''">
+				p.result = #{result},
+			</if>
+			<if test="updateTime != NULL and updateTime != ''">
+				p.update_time = NOW(),
+			</if>
+			where p.profile_id = #{profileId}
+		</set>
+	</update>
+
+	<delete id="delProfile" parameterType="java.util.Map">
+		DELETE FROM t_push_ios_mdm_profile WHERE device_id = #{deviceId} and ctype = #{ctype}
+	</delete>
+</mapper>

@@ -1,0 +1,139 @@
+(function() {
+	$(document).ready(function() {
+		init();
+		initChart();
+	});
+	
+	function init() {
+		// 设置模拟滚动条
+		$(".sidebar-box").height($(window).height() - 140);
+		$(".sidebar-box .viewport").height($(window).height() - 140);
+		$('.sidebar-box').tinyscrollbar();
+		
+		window.onresize = function() {
+			$(".sidebar-box").height($(window).height() - 140);
+			$(".sidebar-box .viewport").height($(window).height() - 140);
+			$('.sidebar-box').tinyscrollbar().data("plugin_tinyscrollbar").update("top");
+		};
+		
+		$("#logoutImg").on('click', function() {
+			layer_confirm2_warning("退出系统？", function() {
+				$.ajax({
+					type: "POST", 
+					url: ctx + "/payman/system/logout",
+					data: {}, 
+					dataType: "json",
+					success: function(result) {
+						if(result.status == 0) {
+							layer.msg(result.message, { icon: 1, time: 800 }, function() {
+								if(ctx == '') {
+									window.location.href = '/payman/system/login';
+								} else {
+									window.location.href = ctx + '/payman/system/login';
+								}
+							});
+						} else {
+							layer_alert_warning(JSON.stringify(result));
+						}
+					}, error: function(result) {
+						layer_alert_warning("服务器处理异常!");
+					}
+				});
+			}, function(){});
+		});
+	}
+	
+	function initChart() {
+		 $('#platformStatisContainer').jqChart({
+             title: { text: '支付&占比' },
+             legend: { title: '支付方式' },
+             border: { strokeStyle: '#6ba851' },
+             background: false,
+             animation: { duration: 1 },
+             shadows: {
+                 enabled: true
+             },
+             series: [
+                 {
+                     type: 'pie',
+                     fillStyles: ['#418CF0', '#FCB441', '#E0400A', '#056492', '#BFBFBF', '#1A3B69', '#FFE382'],
+                     labels: {
+                         stringFormat: '%.1f%%',
+                         valueType: 'percentage',
+                         font: '15px sans-serif',
+                         fillStyle: 'white'
+                     },
+                     explodedRadius: 10,
+                     explodedSlices: [5],
+                     data: [
+                     	['支付宝支付', 65],
+                     	['微信支付', 58],
+                     	['银联支付', 30],
+                        ['苹果支付', 60]
+                     ]
+                 }
+             ]
+         });
+
+         $('#platformStatisContainer').bind('tooltipFormat', function (e, data) {
+             var percentage = data.series.getPercentage(data.value);
+             percentage = data.chart.stringFormat(percentage, '%.2f%%');
+
+             return '<b>' + data.dataItem[0] + '</b><br />' +
+                    data.value + ' (' + percentage + ')';
+         });
+         
+         $('#androidChannelContainer').jqChart({
+             title: { text: '当月订单数' },
+             legend: {
+                 enabled: false
+             },
+             border: { strokeStyle: '#6ba851' },
+             animation: { duration: 1 },
+             shadows: {
+                 enabled: true
+             },
+             series: [
+                 {
+                     type: 'bar',
+                     title: '',
+                     fillStyles: ['#418CF0', '#FCB441', '#E0400A', '#056492'],
+                     data: [
+                        ['支付宝支付', 33],
+                        ['微信支付', 57],
+                        ['银联支付', 33],
+                        ['苹果支付', 12]
+                    ]
+                 }
+             ]
+         });
+         
+         $('#otherChannelContainer').jqChart({
+             title: { text: '当月退款数' },
+             legend: {
+                 enabled: false
+             },
+             border: { strokeStyle: '#6ba851' },
+             animation: { duration: 1 },
+             shadows: {
+                 enabled: true
+             },
+             series: [
+                 {
+                     type: 'bar',
+                     title: '',
+                     fillStyles: ['#418CF0', '#FCB441', '#E0400A', '#056492'],
+                     data: [
+                         ['支付宝支付', 33],
+                         ['微信支付', 57],
+                         ['银联支付', 33],
+                         ['苹果支付', 12]
+                    ]
+                 }
+             ]
+         });
+	}
+})();
+
+
+

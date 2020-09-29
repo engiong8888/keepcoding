@@ -1,0 +1,222 @@
+package cn.gnw.push.provider.service;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.UniqueKeyUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.AliySmsUtil;
+import cn.gnw.push.api.utils.PushSmsUtil;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.api.utils.SmsUtil;
+import cn.gnw.push.provider.config.SmsConfig;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.annotation.Resource;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+/**
+ * 短信推送（傲众云）
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-18 13:51
+ */
+@Service
+public class SmsPushService extends BaseBS {
+
+//    @Resource
+//    private SmsConfig smsConfig;    //短信配置类
+
+    /**
+     * 短信推送
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject send(Map<String, String> params){
+        JSONObject result = new JSONObject();
+        String recordId = UniqueKeyUtil.getKey(new Date());
+        params.put("record_id", recordId);
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.sms.addPushSmsRecord", params);
+        if(count > 0) {
+            JSONObject payMsg = PushSmsUtil.getInstance().toPushSmsInQueue(params);
+            getLogger().info("短信推送信息入队列：" + payMsg);
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "insert error");
+        }
+        return result;
+    }
+
+    /**
+     * 短信推送（阿里云）
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject aliyunSend(JSONObject params){
+        JSONObject result = new JSONObject();
+        String recordId = UniqueKeyUtil.getKey(new Date());
+        params.put("record_id", recordId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.sms.addAliyunSmsRecord", params);
+        if(count > 0) {
+            JSONObject payMsg = PushSmsUtil.getInstance().toAliyunSmsInQueue(params);
+            getLogger().info("短信推送信息入队列：" + payMsg);
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "insert error");
+        }
+        return result;
+    }
+
+    /**
+     * 短信推送(异常)，采用备用方案（傲众云）
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject errorSend(Map<String, String> params){
+        JSONObject result = new JSONObject();
+        JSONObject rResult = new JSONObject();
+
+        rResult = RedisUtil.getInstance().getSmsConfigFromRedis(params.get("platform"), Constants.SMS_SOURCE_01, Constants.REDIS_SMS_CONFIG);
+        if (rResult.getIntValue("status") == 0) {
+            getLogger().info(new StringBuffer("获取短信配置config [Redis][key]{").append(Constants.REDIS_SMS_CONFIG)
+                    .append("}[config]{").append(rResult).append("}").toString());
+            String smsStr = rResult.getString("data");
+            JSONObject smsConfig = JSONObject.parseObject(smsStr);
+            String smsTid = smsConfig.getString("sms_tid");
+            String smsPwd = smsConfig.getString("sms_pwd");
+            params.put("sms_tid", smsTid);
+            params.put("sms_pwd", smsPwd);
+            params.put("source", Constants.SMS_SOURCE_01);
+
+            String recordId = UniqueKeyUtil.getKey(new Date());
+            params.put("record_id", recordId);
+
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            int count = simpleMybatisDao.insert("push.sms.addPushSmsRecord", params);
+            if (count > 0) {
+                JSONObject payMsg = PushSmsUtil.getInstance().toAliyunSmsErrorInQueue(params);
+                getLogger().info("短信推送信息异常入队列：" + payMsg);
+                result.put("status", "0");
+                result.put("message", "success");
+            } else {
+                result.put("status", "-1");
+                result.put("message", "insert error");
+            }
+        } else {
+            getLogger().info(new StringBuffer("获取备用短信配置redis为空 [Redis][key]{").append(Constants.REDIS_SMS_CONFIG)
+                    .append("}[config]{").append(rResult).append("}").toString());
+            result.put("status", -1);
+            result.put("message", "SMS config in redis does not exist");
+        }
+        return result;
+    }
+
+    /**
+     * 发送短信(傲众云)
+     * @param recordId
+     * @param mobile
+     * @param content
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendSms (String smsTid, String smsPwd, String recordId, String mobile, String content) {
+        JSONObject result = new JSONObject();
+        Map<String, String> params = new HashMap<String, String>();
+
+        params.put("record_id", recordId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        SmsUtil su = new SmsUtil(smsTid, smsPwd);
+        result = su.sendSms(mobile, content);
+        if(result != null) {
+//            RedisUtil.getInstance().setSmsPhoneToRedis(mobile, smsConfig.getTimeOut());
+
+            if ("success".equals(result.get("status"))) {
+                params.put("is_send", "1");
+            } else {
+                params.put("is_send", "0");
+            }
+            params.put("result", result.toString());
+            params.put("sms_tid", smsTid);
+            simpleMybatisDao.update("push.sms.updatePushSmsRecord", params);
+        }
+        return result;
+    }
+
+    /**
+     * 发送短信(阿里云)
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendAliyunSms (JSONObject params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        String accessKeyId = params.getString("key_id");
+        String accessKeySecret = params.getString("key_secret");
+        String signName = params.getString("sign_name");
+        String tempCode = params.getString("temp_code");
+        String phone = params.getString("phone");
+        JSONObject tempParams = params.getJSONObject("temp_params");
+        AliySmsUtil as = new AliySmsUtil(accessKeyId, accessKeySecret, signName);
+
+        result = as.sendSms(tempCode, phone, tempParams);
+        getLogger().info("短信推送成功，更新状态{}：" + params);
+        if(result != null) {
+            if ("OK".equals(result.getString("Code"))) {
+                params.put("isSend", "1");
+            } else {
+                params.put("isSend", "0");
+            }
+            params.put("result", result.toString());
+            simpleMybatisDao.update("push.sms.updatePushAliyunSmsRecord", params);
+        }
+        return result;
+    }
+
+    /**
+     * 增加短信配置
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject addConfig(JSONObject params){
+        JSONObject result = new JSONObject();
+        String configId = UniqueKeyUtil.getKey(new Date());
+
+        params.put("sms_config_id", configId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.sms.addPushSmsConfig", params);
+        if(count > 0) {
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "sms config insert error");
+        }
+        return result;
+    }
+
+    /*public static void main(String[] args){
+        String str = "您的登陆短信验证码是:${code},有效期5分钟。";
+        StringBuilder sb = new StringBuilder(str);
+         str.replace("${code}",  "1234");
+    }*/
+
+}

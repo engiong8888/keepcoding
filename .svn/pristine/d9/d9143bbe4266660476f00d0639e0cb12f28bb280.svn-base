@@ -1,0 +1,62 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 邮件推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-12 16:22
+ */
+@RestController
+@RequestMapping(value = "/push/mail")
+public class MailPushController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 发送邮件
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.sendMail(rParams);
+    }
+
+    /**
+     * 更新邮件配置redis
+     * @return
+     */
+    @PostMapping("/update/mail_config")
+    @ResponseBody
+    private String updateRedisMailConfig(){
+        return pushServiceClient.updateRedisMailConfig();
+    }
+
+    /**
+     * 获取邮件配置redis
+     * @param rParams
+     * @return
+     */
+    @GetMapping("/query/mail_config")
+    @ResponseBody
+    private String getRedisMailConfig(@RequestBody JSONObject rParams) {
+        return pushServiceClient.getRedisMailConfig(rParams);
+    }
+
+    /**
+     * 获取邮件发送记录
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String getPushMailRecord(@RequestBody JSONObject rParams) {
+        return pushServiceClient.getPushMailRecord(rParams);
+    }
+}

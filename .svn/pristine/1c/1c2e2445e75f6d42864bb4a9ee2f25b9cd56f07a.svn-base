@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.ws">
+    <resultMap id="wsBindRecord" type="java.util.Map">
+        <result property="bind_record_id" column="bind_record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="client_id" column="client_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="channel" column="channel" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="bind_time" column="bind_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <resultMap id="wsDeviceRecord" type="java.util.Map">
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="channel" column="channel" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="client_id" column="client_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 获取绑定记录 -->
+    <select id="queryBindRecord" parameterType="java.lang.String" resultMap="wsBindRecord">
+        SELECT * from t_push_websocket_bind_record t
+        where t.device_id = #{device_id}
+        <if test="channel != NULL and channel != ''">
+            AND t.channel = #{channel}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- websocket push 添加绑定记录 -->
+    <insert id="addPushWSRecord" parameterType="java.util.Map">
+		INSERT INTO t_push_websocket_bind_record(bind_record_id, device_id, client_id, platform,channel, bind_time, status)
+        VALUES(#{bind_record_id}, #{device_id}, #{client_id}, #{platform},#{channel}, NOW(), #{status})
+	</insert>
+
+    <!--重新绑定 更新client_id-->
+    <update id="updateWSBindClientId" parameterType="java.util.Map">
+		UPDATE t_push_websocket_bind_record t
+        SET t.status = 1,t.client_id = #{client_id}, t.bind_time = NOW()
+        WHERE bind_record_id = #{bind_record_id}
+    </update>
+
+    <!-- 解除绑定关系 -->
+    <update id="unbind" parameterType="java.util.Map">
+        UPDATE t_push_websocket_bind_record t
+        SET t.status = 2 , t.bind_time = NOW()
+        WHERE t.bind_record_id = #{bind_record_id}
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+    </update>
+
+    <select id="queryDevice" resultMap="wsDeviceRecord">
+        SELECT t.device_id,t.channel,t.client_id from t_push_websocket_bind_record t
+    </select>
+</mapper>

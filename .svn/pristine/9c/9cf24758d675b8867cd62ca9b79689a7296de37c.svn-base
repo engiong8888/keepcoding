@@ -1,0 +1,61 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.MailPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+/**
+ * 待发送邮件监听器
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-18 17:20
+ */
+
+public class ToPushMailListener extends BaseBS implements ChannelAwareMessageListener {
+
+    MailPushService mailPushService = SpringUtil.getBean("mailPushService", MailPushService.class);
+
+    private int number = 1;
+    public ToPushMailListener(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        System.out.println("待发送邮件监听器[");
+        getLogger().info(new StringBuffer("待发送邮件监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String recordId = msg.getString("record_id");
+            String to = msg.getString("to");
+            String subject = msg.getString("subject");
+            String messageText = msg.getString("messageText");
+            String fromMail = msg.getString("from_mail");
+            String fromMailPwd = msg.getString("from_mail_pwd");
+            mailPushService.sendMail(fromMail, fromMailPwd, recordId, to, subject, messageText);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

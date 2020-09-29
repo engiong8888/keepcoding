@@ -1,0 +1,38 @@
+server:
+  port: 9500
+spring:
+  application:
+    name: demo-provider
+c3p0:
+  jdbcUrl: jdbc:mysql://106.54.178.88:3306/test?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: root
+  password: cheng6115896
+  driverClass: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+mybatis:
+  mapperLocations : classpath:mybatis/*.xml
+logging:
+  config: classpath:logback-boot.xml
+  level:
+    root: INFO
+    org.springframework.cloud.sleuth: DEBUG
+  path: /data/logs/java/${spring.application.name}/
+keepcoding:
+  product: stand
+baseConfig:
+  apiAccessDomain: https://test.com/pss
+management:
+  security:
+    enabled: false
+sms:
+  source: "99"
+  timeOut: 60	#短信获取频率，1分钟请求一次
+  frequency: 24

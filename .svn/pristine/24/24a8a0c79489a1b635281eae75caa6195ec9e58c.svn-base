@@ -1,0 +1,28 @@
+package cn.gnw.push.provider.exception;
+
+/**
+ * 参数校验异常
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-12-23 18:04
+ */
+public class ParamException extends Exception {
+    public ParamException() {
+        super();
+    }
+
+    public ParamException(String message) {
+        super(message);
+    }
+
+    // 用指定的详细信息和原因构造一个新的异常
+    public ParamException(String message, Throwable cause){
+        super(message,cause);
+    }
+
+    //用指定原因构造一个新的异常
+    public ParamException(Throwable cause) {
+        super(cause);
+    }
+}

@@ -1,0 +1,514 @@
+package cn.gnw.push.iosmdm.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.iosmdm.IosMdmBindRecord;
+import cn.gnw.push.api.enumeration.InstallTypeEnum;
+import cn.gnw.push.api.utils.ConfigUtils;
+import cn.gnw.push.api.utils.IosMdmUtils;
+import cn.gnw.push.iosmdm.provider.util.PushUtils;
+import com.alibaba.fastjson.JSONObject;
+import com.jiangge.utils.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 设备指令操作
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-10-10 11:45
+ */
+@RestController
+@RequestMapping("/device")
+public class DeviceController {
+
+    private Log logger = LogFactory.getLog(DeviceController.class);
+
+    /**
+     * 锁屏
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/lock")
+    public String deviceLock(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------Lock Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        /**检查参数是否完整**/
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId",deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.Lock);
+                        recordParams.put("doIt","0");
+                        recordParams.put("callBack",callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送设备锁屏命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送设备锁屏命令失败!");
+                    }
+                    logger.info("-------------------Lock End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 获取设备信息
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/info")
+    public String deviceInformation(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------Information Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        /**检查参数是否完整**/
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.Info);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("msg", "发送查询设备信息命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送查询设备信息命令失败!");
+                    }
+                    logger.info("-------------------Information End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 获取设备已经安装的app信息
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/apps")
+    public String deviceInstalledAppsList(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------InstalledApplicationList Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String ctype = rParams.getString("ctype");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        /**检查参数是否完整**/
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.Apps);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("ctype", ctype);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送获取APP应用列表命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送获取APP应用列表命令失败!");
+                    }
+                    logger.info("-------------------InstalledApplicationList End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 设备安装APP
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install")
+    public String deviceInstallApplication(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------InstallApplication Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String source = rParams.getString("source");
+        String ctype = rParams.getString("ctype");
+        String cvalue = rParams.getString("cvalue");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        String newctype = InstallTypeEnum.getCode(ctype);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        /**检查参数是否完整**/
+        if(StringUtils.isNotEmpty(deviceId) && StringUtils.isNotEmpty(newctype) && StringUtils.isNotEmpty(cvalue)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.Install);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("ctype", ctype);
+                        recordParams.put("cvalue", cvalue);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送安装APP应用命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送安装APP应用命令失败!");
+                    }
+                    logger.info("-------------------InstallApplication End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 设备卸载APP
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/remove")
+    public String deviceRemoveApplication(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------RemoveApplication Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String identifier = rParams.getString("identifier");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        if(StringUtils.isNotEmpty(deviceId) && StringUtils.isNotEmpty(identifier)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.Remove);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("cvalue", identifier);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送卸载APP应用命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送卸载APP应用命令失败!");
+                    }
+                    logger.info("-------------------RemoveApplication End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 受限系统软件
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/restriction/system/app")
+    public String restrictionSystemApplication(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------InstallProfile Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String ctype = rParams.getString("ctype");
+        String cvalue = rParams.getString("cvalue");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.InstallProfile);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("ctype", ctype);
+                        recordParams.put("cvalue", cvalue);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送配置文件命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送配置文件命令失败!");
+                    }
+                    logger.info("-------------------InstallProfile End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 过滤网址黑名单
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install/filter/url")
+    public String installFilterUrl(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------InstallFilterUrl Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String cvalue = rParams.getString("cvalue");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.InstallProfile);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("ctype", IosMdmUtils.BlacklistedURLs);
+                        recordParams.put("cvalue", cvalue);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送过滤网址命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送过滤网址命令失败!");
+                    }
+                    logger.info("-------------------InstallFilterUrl End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 黑名单软件
+     *
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/install/blacklist/apps")
+    public String installBlackApps(@RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        logger.info("-------------------InstallBlackAppsId Start---------------");
+        String deviceId = rParams.getString("device_id");
+        String cvalue = rParams.getString("cvalue");
+        String source = rParams.getString("source");
+        String callBack = rParams.getString("call_back");
+        String attach = rParams.getString("attach");
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        if(StringUtils.isNotEmpty(deviceId)){
+            Map<String,String> params = new HashMap<String,String>();
+            params.put("deviceId",deviceId);
+            IosMdmBindRecord bindRecord = simpleMybatisDao.selectOne("mdm.findBindRecord", params, IosMdmBindRecord.class);
+            if(null == bindRecord){
+                result.put("status", -1);
+                result.put("message", "设备数据不存在!");
+            }else{
+                try {
+                    String pemFile = ConfigUtils.mdmProperties().getProperty("APNS_P12MDM");
+                    String pemPath = IosMdmUtils.RESOURCE_PATH + pemFile;
+                    int pushState = PushUtils.singleMDMPush(pemPath, bindRecord);
+                    if (pushState == 1) {
+                        Map<String,String> recordParams = new HashMap<String,String>();
+                        recordParams.put("commandId", StringUtil.getUUIDString());
+                        recordParams.put("deviceId", deviceId);
+                        recordParams.put("source",source);
+                        recordParams.put("command", IosMdmUtils.InstallProfile);
+                        recordParams.put("doIt", "0");
+                        recordParams.put("ctype", IosMdmUtils.BlacklistedAppBundleIDs);
+                        recordParams.put("cvalue", cvalue);
+                        recordParams.put("callBack", callBack);
+                        recordParams.put("attach",attach);
+                        simpleMybatisDao.insert("mdm.addRecord",recordParams);
+                        result.put("status", 0);
+                        result.put("message", "发送安装黑名单软件命令成功!");
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "发送安装黑名单软件命令失败!");
+                    }
+                    logger.info("-------------------InstallBlackAppsId End---------------");
+                }catch (Exception e){
+                    logger.error("读取配置信息异常",e);
+                    result.put("status", -1);
+                    result.put("message", "读取配置信息异常");
+                }
+            }
+        }else{
+            result.put("status", -1);
+            result.put("message", "请求参数不完整!");
+        }
+        return result.toJSONString();
+    }
+}

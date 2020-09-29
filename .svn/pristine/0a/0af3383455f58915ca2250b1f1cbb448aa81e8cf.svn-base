@@ -1,0 +1,75 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.JgPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 待推送极光消息监听器
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-26 14:11
+ */
+public class ToPushJgListener extends BaseBS implements ChannelAwareMessageListener {
+
+    JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+    private int number = 1;
+    public ToPushJgListener (int number) {
+        this.number = number;
+    }
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送极光消息监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String pushType = msg.getString("push_type");
+            String title = msg.getString("title");
+            String alert = msg.getString("alert");
+            String platform = msg.getString("platform");
+            List<String> alias = (List<String>)msg.get("alias");
+            List<String> tags = (List<String>) msg.get("tags");
+            List<String> registrationIds = (List<String>) msg.get("registration_ids");
+            Map<String, String> extra = (Map<String, String>)msg.get("extra");
+            String appKey = msg.getString("app_key");
+            String masterSecret = msg.getString("master_secret");
+            String jgIosEnvironment = msg.getString("jg_ios_environment");
+            JSONObject params = new JSONObject();
+            params.put("push_type", pushType);
+            params.put("title", title);
+            params.put("alert", alert);
+            params.put("platform", platform);
+            params.put("alias", alias);
+            params.put("tags", tags);
+            params.put("registration_ids", registrationIds);
+            params.put("extra",extra);
+            params.put("app_key",appKey);
+            params.put("master_secret",masterSecret);
+            params.put("jg_ios_environment",jgIosEnvironment);
+            jgPushService.sendJg(params);
+
+        } catch (Exception e) {
+
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

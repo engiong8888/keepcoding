@@ -1,0 +1,406 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.DateUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.provider.service.HuaweiPushService;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.*;
+
+/**
+ * 华为推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-29 11:50
+ */
+@RestController
+@RequestMapping("/push/huawei")
+public class HuaweiPushController extends BaseBS {
+
+    /**
+     * 发送消息
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"title", "content", "msg_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_HUAWEI_SEND);
+
+            List<String> deviceList = (List<String>)rParams.get("devices");
+            HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_HUAWEI_CONFIG);
+                if(result.getIntValue("status") == 0) {
+
+                    getLogger().info(new StringBuffer("获取华为配置config [Redis][key]{").append(Constants.REDIS_HUAWEI_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String huaweiStr = result.getString("data");
+                    if (!StringUtil.isBlank(huaweiStr)) {
+                        JSONObject huaweiConfig = JSONObject.parseObject(huaweiStr);
+
+                        String appId = huaweiConfig.getString("app_id");
+                        String appSecret = huaweiConfig.getString("app_secret");
+                        String appPkg = huaweiConfig.getString("app_pkg");
+
+                        List<String> deviceTokenList = new ArrayList<String>();
+                        if (deviceList != null && !deviceList.isEmpty()) {
+                            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                            Map<String, Object> params = new HashMap<String, Object>();
+                            params.put("devices", deviceList);
+                            deviceTokenList = simpleMybatisDao.selectList("push.huawei.queryIdListByDevices", params, String.class);
+                            System.out.println("regIdList.size()>>" + deviceTokenList.size());
+                            if (deviceTokenList.size() < 1) {
+                                result.put("status", -1);
+                                result.put("message", "设备没有对应的device_token");
+                                return result.toJSONString();
+                            }
+
+                            JSONObject sParams = new JSONObject();
+                            sParams.put("deviceTokens", deviceTokenList);
+                            //body
+                            sParams.put("title", rParams.getString("title"));
+                            sParams.put("content", rParams.getString("content"));
+                            //msg
+                            sParams.put("msgType", rParams.getString("msg_type"));
+                            //action
+                            sParams.put("actionType", rParams.getString("action_type"));
+                            //param
+                            sParams.put("paramIntent ", rParams.getString("param_intent"));
+                            sParams.put("paramUrl", rParams.getString("param_url"));
+                            //ext
+                            sParams.put("biTag", rParams.getString("bi_tag"));
+                            sParams.put("customize", rParams.get("customize"));
+
+                            sParams.put("app_id", appId);
+                            sParams.put("app_secret", appSecret);
+                            sParams.put("app_pkg", appPkg);
+
+                            getLogger().info("华为推送，参数：{} ", JSONObject.toJSONString(sParams));
+                            result = huaweiPushService.send(sParams);
+                            getLogger().info("华为推送，结果：{} ", result.toJSONString());
+                        }
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "huawei config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("华为推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+        getLogger().debug("华为推送结果: {}" + result.toString());
+        return result.toString();
+    }
+
+    /**
+     * 绑定设备regId
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"device_id", "regist_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_HUAWEI_BINDING);
+            try {
+                String deviceId = rParams.getString("device_id");
+                Map<String, String> qParams = new HashMap<String, String>();
+                qParams.put("device_id", deviceId);
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.huawei.queryBindRecord", qParams, Map.class);
+                HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+
+                if(bindRecord != null ){
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("bind_record_id", bindRecord.get("bind_record_id"));
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    getLogger().info("华为设备修改绑定regId，参数：{} ", params.toString());
+                    result = huaweiPushService.updateHuaweiBindRecord(params);
+                    getLogger().info("华为设备修改绑定regId，结果：{} ", result.toJSONString());
+
+//                    result.put("status", -1);
+//                    result.put("message", "已绑定设备");
+                } else {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    params.put("platform", Constants.PLATFORM_ANDROID);
+                    getLogger().info("设备绑定registId，参数：{} ", params.toString());
+                    result = huaweiPushService.bindRecord(params);
+                    getLogger().info("设备绑定registId，结果：{} ", result.toJSONString());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("设备绑定registId，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toString();
+    }
+
+    /**
+     * 解除绑定设备
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbindDevice (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"device_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_HUAWEI_UNBIND);
+            try {
+                String deviceId = rParams.getString("device_id");
+                Map<String, String> qParams = new HashMap<String, String>();
+                qParams.put("device_id", deviceId);
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.huawei.queryBindRecord", qParams, Map.class);
+
+                if(bindRecord != null ){
+                    HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("device_id", rParams.getString("device_id"));
+                    qParams.put("bind_record_id", bindRecord.get("bind_record_id"));
+                    getLogger().info("设备解除绑定regId，参数：{} ", qParams.toString());
+                    result = huaweiPushService.unbind(qParams);
+                    getLogger().info("设备解除绑定regId，结果：{} ", result.toJSONString());
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "设备未绑定regId");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("设备绑定regId，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toString();
+    }
+
+
+    /**
+     * 消息送达回执
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/notify")
+    @ResponseBody
+    private String huaweiPushNotify(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+
+        getLogger().info("notify消息回执：{} "+JSONObject.toJSONString(rParams));
+        try {
+            JSONArray staArray = rParams.getJSONArray("statuses");
+            System.out.println(staArray.size());
+            //List<Map<String,String>> statusList = (List<Map<String,String>>)(rParams.get("statuses"));
+            List<Map> statusList = new ArrayList<Map>();
+            Map<String, Object> sMap = null;
+            if(staArray.size() > 0){
+                for(int i=0; i<staArray.size(); i++){
+                    sMap = new HashMap<String, Object>();
+                    JSONObject obj = staArray.getJSONObject(i);
+                    sMap.put("token", obj.getString("token"));
+                    sMap.put("biTag", obj.getString("biTag"));
+                    sMap.put("status", obj.getString("status"));
+                    sMap.put("timestamp", DateUtil.getDateByPHPTimestamp( Long.parseLong(obj.getString("timestamp"))/1000));
+                    sMap.put("appid", obj.getString("appid"));
+                    sMap.put("requestId", obj.getString("requestId"));
+                    statusList.add(sMap);
+                }
+            }
+
+            HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+            Map<String, Object> params = new HashMap<String, Object>();
+            params.put("statuses", statusList);
+            result = huaweiPushService.pushNotify(params);
+            getLogger().info("华为消息回执，结果：{} ", result.toJSONString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("华为消息回执，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * 获取华为推送记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushMailRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"source", "limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_HUAWEI_QUERY_RECORD);
+            try {
+
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+
+                if(!"-1".equals(limit)) {
+                    qParams.put("pos", rParams.getInteger("pos"));
+                    qParams.put("limit", Integer.valueOf(limit));
+                }
+                qParams.put("source", rParams.getString("source"));
+                qParams.put("regist_id", rParams.getString("regist_id"));
+                qParams.put("alias", rParams.getString("alias"));
+                qParams.put("platform", rParams.getString("platform"));
+                qParams.put("title", rParams.getString("title"));
+                qParams.put("content", rParams.getString("content"));
+                qParams.put("status", rParams.getString("status"));
+                qParams.put("is_reach", rParams.getString("is_reach"));
+                qParams.put("remark", rParams.getString("remark"));
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+
+                JSONObject cParams = new JSONObject();
+                cParams.put("source", rParams.getString("source"));
+                Map<String, String> huaweiConfig = simpleMybatisDao.selectOne("push.huawei.queryPushHuaweiConfig", cParams, Map.class);
+                if(huaweiConfig != null) {
+                    qParams.put("app_id", huaweiConfig.get("app_id"));
+                    getLogger().info(new StringBuffer("华为推送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+
+                    Integer dataCount = simpleMybatisDao.selectOne("push.huawei.queryPushHuaweiRecordCount", qParams, Integer.class);
+                    List<Map> huaweiRecordList = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiRecord", qParams, Map.class);
+                    if (huaweiRecordList == null) {
+                        result.put("status",-1);
+                        result.put("message","暂无华为推送记录！");
+                    } else {
+                        result.put("status", 0);
+                        result.put("message", "ok");
+                        result.put("data", huaweiRecordList);
+                        result.put("total", dataCount);
+                        result.put("count", huaweiRecordList.size());
+                    }
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "获取华为配置信息错误！");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取华为推送记录失败：{}", e.getMessage());
+            }
+        }
+        getLogger().info(new StringBuffer("华为推送流水查询，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+
+    /**
+     * 更新华为 redis缓存
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/update/huawei_config")
+    @ResponseBody
+    public String updateRedisHuaweiConfig(HttpServletRequest request, HttpServletResponse response){
+        JSONObject result = new JSONObject();
+
+        try {
+//            String source = rParams.getString("source");
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.huawei.queryPushHuaweiConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateHuaweiConfigToRedis(Constants.REDIS_HUAWEI_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "huawei configs is null");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("华为 redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result.toString();
+    }
+
+//    public static void main (String[] args) {
+//        String s = "[]";
+//
+//        String str1 = "test1";
+//        String str2 = "test2";
+//        List<String> list = new ArrayList<String>();
+//        list.add(str1);
+//        list.add(str2);
+//
+//        //JSONArray array = JSONArray.parseArray(JSON.toJSONString(list));
+//        JSONArray array = JSONArray.parseArray(s);
+//
+//        for(int i=0;i<array.size();i++){
+//            JSONObject obj = array.getJSONObject(i);
+//            System.out.println(obj.get("key1"));
+//        }
+//
+//    }
+
+//    public static  void main (String[] args) {
+////        JSONObject obj = new JSONObject();
+////        obj
+//
+//        String longTime= "1489993883189";
+//        Date date = null;
+//
+//        date = new Date(Long.parseLong(longTime));
+//
+//        System.out.println(date);
+//
+//    }
+}

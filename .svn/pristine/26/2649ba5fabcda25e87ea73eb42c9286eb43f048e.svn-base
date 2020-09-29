@@ -1,0 +1,23 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "device_id"
+  ],
+  "properties": {
+    "device_id": {
+      "$id": "#/properties/device_id",
+      "type": "string",
+      "title": "The Device_id Schema",
+      "default": "",
+      "examples": [
+        "5e8c5688ee33063f5935a0150c969be4"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    }
+  }
+}

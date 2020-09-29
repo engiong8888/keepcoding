@@ -1,0 +1,88 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.VivoPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 待推送vivo消息（群推）监听器
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-30 15:59
+ */
+public class ToPushVivoGroupListener extends BaseBS implements ChannelAwareMessageListener {
+
+    VivoPushService vivoPushService = SpringUtil.getBean("vivoPushService", VivoPushService.class);
+    private int number = 1;
+    public ToPushVivoGroupListener (int number) {
+        this.number = number;
+    }
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送vivo消息（群推）监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            List<String> regIdList = (List<String>)msg.get("regIds");
+            List<String> aliasList = (List<String>)msg.get("alias");
+
+            Set<String> regIds = new HashSet<>(regIdList);
+            Set<String> alias = new HashSet<>(aliasList);
+            String notifyType = msg.getString("notifyType");
+            Integer timeToLive = msg.getInteger("timeToLive");
+            String title = msg.getString("title");
+            String content = msg.getString("content");
+            String skipType = msg.getString("skipType");
+            String skipContent = msg.getString("skipContent");
+            String networkType = msg.getString("networkType");
+            Map<String, String> clientCustomMap = (Map<String, String>) msg.get("clientCustomMap");
+            Map<String, String> extra = (Map<String, String>)msg.get("extra");
+            String appId = msg.getString("app_id");
+            String appKey = msg.getString("app_key");
+            String appSecret = msg.getString("app_secret");
+            JSONObject params = new JSONObject();
+            params.put("regIds", regIds);
+            params.put("alias", alias);
+            params.put("notifyType", notifyType);
+            params.put("timeToLive", timeToLive);
+            params.put("title", title);
+            params.put("content", content);
+            params.put("skipType", skipType);
+            params.put("skipContent", skipContent);
+            params.put("networkType", networkType);
+            params.put("clientCustomMap", clientCustomMap);
+            params.put("extra", extra);
+            params.put("app_id", appId);
+            params.put("app_key", appKey);
+            params.put("app_secret", appSecret);
+
+            vivoPushService.sendVivoGroup(params);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

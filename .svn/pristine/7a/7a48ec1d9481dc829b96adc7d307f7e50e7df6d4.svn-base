@@ -1,0 +1,242 @@
+package cn.gnw.push.websocket.provider.config;
+
+
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.mq.*;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * RabbitMQ 配置类
+ *
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-07-10 22:17
+ */
+@Configuration
+@ConfigurationProperties(prefix = "spring.rabbitmq")
+public class RabbitMQConfig {
+
+    private String host;
+    private int port;
+    private String username;
+    private String password;
+    private String virtualHost;
+
+    @Bean
+    public ConnectionFactory connectionFactory() {
+        CachingConnectionFactory connectionFactory = new CachingConnectionFactory(host, port);
+        connectionFactory.setUsername(username);
+        connectionFactory.setPassword(password);
+        connectionFactory.setVirtualHost(virtualHost);
+        connectionFactory.setPublisherConfirms(true);
+        return connectionFactory;
+    }
+
+    //ws交换机
+    @Bean
+    public RabbitTemplate rabbitTemplate() {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory());
+        rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
+        rabbitTemplate.setExchange(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    DirectExchange directExchange() {
+        return new DirectExchange(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE, true, false);
+    }
+
+    /****    设备消息队列    ****/
+    // 待发送设备消息队列
+    @Bean(name = "sendDeviceQueue")
+    public Queue sendDeviceQueue() {
+        return new Queue(WSConstants.RMQ_GNW_PUSH_WS_SEND_DEVICE_QUEUE, true, false, false);
+    }
+
+    @Bean
+    Binding deviceBindingExchange(@Qualifier("sendDeviceQueue") Queue sendDeviceQueue) {
+        return BindingBuilder.bind(sendDeviceQueue).to(directExchange()).with(WSConstants.RMQ_GNW_PUSH_WS_SEND_DEVICE_QUEUE);
+    }
+
+    // Device队列监听器1  由设备中心进行监听
+//    @Bean
+    public SimpleMessageListenerContainer messageContainer() {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer(connectionFactory());
+        container.setQueues(sendDeviceQueue());
+        container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        container.setMessageListener(new ToSendDeviceListener(1));
+        return container;
+    }
+
+
+    /****    mysql状态变更队列    ****/
+    // 待发送状态变更消息队列
+    @Bean(name = "statusChangeQueue")
+    public Queue statusChangeQueue() {
+        return new Queue(WSConstants.RMQ_GNW_PUSH_WS_SEND_STATUS_CHANGE, true, false, false);
+    }
+
+    @Bean
+    Binding statusChangeBindingExchange(@Qualifier("statusChangeQueue") Queue statusChangeQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(statusChangeQueue).to(directExchange).with(WSConstants.RMQ_GNW_PUSH_WS_SEND_STATUS_CHANGE);
+    }
+
+    //状态变更队列监听器2
+    @Bean
+    public SimpleMessageListenerContainer messageContainer5() {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer(connectionFactory());
+        container.setQueues(statusChangeQueue());
+        container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        container.setMessageListener(new ToSendStatusChange(2));
+        return container;
+    }
+
+    /*---------------  ws推送 广播队列 (主动关闭客户端连接)  ---------------*/
+
+    //ws广播交换机
+    @Bean(name = "topicTemplate")
+    public RabbitTemplate topicTemplate() {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory());
+        rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
+        rabbitTemplate.setExchange(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE_TOPIC);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    TopicExchange topicExchange() {
+        return new TopicExchange(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE_TOPIC, true, false);
+    }
+
+    /*****    关闭客户端队列    *****/
+    @Bean
+    public Queue topicQueue() {
+        return new Queue(new StringBuffer(WSConstants.RMQ_GNW_PUSH_WS_SEND_NOTICE_CLOSE)
+                .append("_").append(StringUtil.getUUIDString())
+                .toString(), false, false, true);
+    }
+
+    @Bean
+    public Binding closeConnectBindingExchange() {
+        return BindingBuilder.bind(topicQueue()).to(topicExchange()).with(WSConstants.RMQ_GNW_PUSH_WS_SEND_NOTICE_CLOSE);
+    }
+
+    @Bean
+    public SimpleMessageListenerContainer messageContainer7() {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer(connectionFactory());
+        container.setQueues(topicQueue());
+        container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        container.setMessageListener(new ToSendNoticeClose(3));
+        return container;
+    }
+
+    /*****    指令队列   接收设备中心下发指令 *****/
+    // 待发送指令消息队列
+    @Bean(name = "sendCommandQueue")
+    public Queue sendCommandQueue() {
+        return new Queue(new StringBuffer(WSConstants.RMQ_GNW_PUSH_WS_SEND_COMMAND_QUEUE)
+                .append("_").append(StringUtil.getUUIDString())
+                .toString(), true, false, true);
+    }
+
+    @Bean
+    Binding commandBindingExchange(@Qualifier("sendCommandQueue") Queue sendCommandQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(sendCommandQueue).to(topicExchange()).with(WSConstants.RMQ_GNW_PUSH_WS_SEND_COMMAND_QUEUE);
+    }
+
+    //指令Command队列监听器4
+    @Bean
+    public SimpleMessageListenerContainer messageContainer3() {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer(connectionFactory());
+        container.setQueues(sendCommandQueue());
+        container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        container.setMessageListener(new ToSendCommand(4));
+        return container;
+    }
+
+    /*---------------  设备中心 查询ws 心跳在线人数  ---------------*/
+
+    //设备中心交换机
+    @Bean(name = "deviceTemplate")
+    public RabbitTemplate deviceTemplate() {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory());
+        rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
+        rabbitTemplate.setExchange(WSConstants.RMQ_GNW_DEVICE_EXCHANGE);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    DirectExchange deviceDirectExchange() {
+        return new DirectExchange(WSConstants.RMQ_GNW_DEVICE_EXCHANGE, true, false);
+    }
+
+    /****    同步在线人数    ****/
+    @Bean(name = "device_monitor_queue")
+    public Queue deviceMonitorQueue() {
+        return new Queue(WSConstants.RMQ_GNW_DEVICE_MONITOR_QUEUE, true, false, false);
+    }
+
+    @Bean
+    Binding deviceMonitorBindingExchange(@Qualifier("device_monitor_queue") Queue deviceMonitorQueue) {
+        return BindingBuilder.bind(deviceMonitorQueue).to(deviceDirectExchange()).with(WSConstants.RMQ_GNW_DEVICE_MONITOR_QUEUE);
+    }
+
+    // 同步在线
+    @Bean
+    public SimpleMessageListenerContainer messageContainer6() {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer(connectionFactory());
+        container.setQueues(deviceMonitorQueue());
+        container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        container.setMessageListener(new ToSendDeviceMonitor(5));
+        return container;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getVirtualHost() {
+        return virtualHost;
+    }
+
+    public void setVirtualHost(String virtualHost) {
+        this.virtualHost = virtualHost;
+    }
+}

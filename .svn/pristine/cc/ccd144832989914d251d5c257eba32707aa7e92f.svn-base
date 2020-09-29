@@ -1,0 +1,118 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * vivo推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-11-01 16:40
+ */
+@RestController
+@RequestMapping(value = "/push/vivo")
+public class VivoPushController {
+
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 单推
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.vivoSend(rParams);
+    }
+
+    /**
+     * 群推
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send/group")
+    @ResponseBody
+    private String sendGroup(@RequestBody JSONObject rParams){
+        return pushServiceClient.vivoSendGroup(rParams);
+    }
+
+    /**
+     * 全量推（所有设备）
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send/all")
+    @ResponseBody
+    private String sendAll(@RequestBody JSONObject rParams){
+        return pushServiceClient.vivoSendAll(rParams);
+    }
+
+    /**
+     * 绑定设备
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId(@RequestBody JSONObject rParams){
+        return pushServiceClient.bindingRegId(rParams);
+    }
+
+    /**
+     * 解除绑定
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbind(@RequestBody JSONObject rParams){
+        return pushServiceClient.unbind(rParams);
+    }
+
+    /**
+     *  获取消息推送统计值
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/statistics")
+    @ResponseBody
+    private String getStatistics(@RequestBody JSONObject rParams){
+        return pushServiceClient.getStatistics(rParams);
+    }
+
+    /**
+     * 更新vivo redis缓存
+     * @return
+     */
+    @PostMapping("/update/vivo_config")
+    @ResponseBody
+    private String updateRedisvivoConfig() {
+        return pushServiceClient.updateRedisVivoConfig();
+    }
+
+    /**
+     * 获取vivo推送记录
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String getPushVivoRecord(@RequestBody JSONObject rParams) {
+        return pushServiceClient.queryVivoPushRecord(rParams);
+    }
+
+    /**
+     * 消息回执
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/notify")
+    @ResponseBody
+    private String vivoPushNotify(@RequestBody JSONObject rParams){
+        return pushServiceClient.vivoPushNotify(rParams);
+    }
+}

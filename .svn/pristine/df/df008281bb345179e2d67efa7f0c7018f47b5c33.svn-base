@@ -1,0 +1,58 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.SmsPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+/**
+ * 待发送短信异常（阿里云）监听器
+ * 采用备用（傲众云）
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2019-01-28 18:53
+ */
+public class ToPushAliyunSmsErrorListener extends BaseBS implements ChannelAwareMessageListener {
+
+    SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+    private int number = 1;
+    public ToPushAliyunSmsErrorListener(int number) {
+        this.number = number;
+    }
+
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送短信异常监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        boolean isNeedReInQueue = true;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String mobile = msg.getString("mobile");
+            String content = msg.getString("content");
+            String smsTid = msg.getString("sms_tid");
+            String smsPwd = msg.getString("sms_pwd");
+            String recordId = msg.getString("record_id");
+            smsPushService.sendSms(smsTid, smsPwd, recordId, mobile, content);
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

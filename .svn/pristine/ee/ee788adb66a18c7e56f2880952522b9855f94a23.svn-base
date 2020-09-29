@@ -1,0 +1,71 @@
+package cn.gnw.push.iosmdm.provider.util;
+
+import cn.gnw.push.api.entity.iosmdm.ApnsConfig;
+import cn.gnw.push.api.entity.iosmdm.IosMdmBindRecord;
+import cn.gnw.push.api.entity.iosmdm.Payload;
+import cn.gnw.push.api.utils.ConfigUtils;
+import cn.gnw.push.iosmdm.provider.service.ApnsService;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.annotation.Configuration;
+
+import java.io.InputStream;
+
+/**
+ * Java向Apple服务器PUSH消息
+ * @author jiang.li
+ */
+@Configuration
+public class PushUtils {
+
+    private static Log logger = LogFactory.getLog(PushUtils.class);
+
+    /*************************************************************
+     * 测试推送服务器地址：gateway.sandbox.push.apple.com 端口 2195
+     * 产品推送服务器地址：gateway.push.apple.com         端口 2195
+     ************************************************************/
+
+    private static ApnsService apnsService;
+	
+	private static ApnsService getApnsService(String p12Path) {
+		try{
+			if (apnsService == null) {
+				ApnsConfig config = new ApnsConfig();
+				InputStream is = PushUtils.class.getResourceAsStream(p12Path);
+				//File file = new File(p12Path);
+				//InputStream is = new FileInputStream(file);
+				config.setKeyStore(is);
+				config.setDevEnv(false);
+				String MDMPASS = ConfigUtils.mdmProperties().getProperty("APNS_MDMPASS");
+				config.setPassword(MDMPASS);
+				config.setPoolSize(3);
+				apnsService = apnsService.createInstance(config);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return apnsService;
+	}
+	
+	/**
+     * 向单个iPhone手机推送消息.
+     * @param  mdm    推送参数
+     * @return pushState    返回执行状态(1：成功,0：失败)
+     */
+    public static int singleMDMPush(String p12Path, IosMdmBindRecord mdm) {
+        int pushState = 0 ;
+        try {
+        	ApnsService service = getApnsService(p12Path);
+    		Payload payload = new Payload();
+    		payload.addParam("mdm", mdm.getPushMagic());
+    		service.sendNotification(mdm.getToken(), payload);
+    		Thread.sleep(500);
+            pushState = 1;
+            logger.info("推送信息已发送！");
+        } catch (Exception e) {
+            logger.error("出错了："+e.getMessage());
+            pushState = 0;
+        }
+        return pushState;
+    }
+}

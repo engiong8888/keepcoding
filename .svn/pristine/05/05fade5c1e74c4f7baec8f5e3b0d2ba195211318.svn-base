@@ -1,0 +1,70 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import com.alibaba.fastjson.JSON;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.listener.ExceptionListener;
+import io.netty.channel.ChannelHandlerContext;
+
+import java.util.List;
+
+/**
+ * 描述
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-30 9:37
+ */
+public class WSExceptionListener extends BaseBS implements ExceptionListener {
+    @Override
+    public void onEventException(Exception e, List<Object> list, SocketIOClient socketIOClient) {
+        getLogger().error(new StringBuffer("onEventException : ")
+                .append(e.getMessage())
+                .append("\n socketIOClient : ")
+                .append(JSON.toJSONString(socketIOClient.getHandshakeData().getUrlParams()))
+                .append("\nlist : ")
+                .append(JSON.toJSONString(list)).toString());
+    }
+
+    @Override
+    public void onDisconnectException(Exception e, SocketIOClient socketIOClient) {
+        getLogger().error(new StringBuffer("onDisconnectException : ")
+                .append(e.getMessage())
+                .append("\n socketIOClient : ")
+                .append(JSON.toJSONString(socketIOClient.getHandshakeData().getUrlParams()))
+                .toString());
+    }
+
+    @Override
+    public void onConnectException(Exception e, SocketIOClient socketIOClient) {
+        getLogger().error(new StringBuffer("onConnectException : ")
+                .append(e.getMessage())
+                .append("\n socketIOClient : ")
+                .append(JSON.toJSONString(socketIOClient.getHandshakeData().getUrlParams()))
+                .toString());
+    }
+
+    @Override
+    public void onPingException(Exception e, SocketIOClient socketIOClient) {
+        getLogger().error(new StringBuffer("onPingException : ")
+                .append(e.getMessage())
+                .append("\n socketIOClient : ")
+                .append(JSON.toJSONString(socketIOClient.getHandshakeData().getUrlParams()))
+                .toString());
+    }
+
+    @Override
+    public boolean exceptionCaught(ChannelHandlerContext channelHandlerContext, Throwable throwable) throws Exception {
+        try {
+            getLogger().error(new StringBuffer("ExceptionCaught : ")
+                    .append("\nMessage : ").append(throwable.getMessage())
+                    .append("\nLocalizedMessage : ").append(throwable.getLocalizedMessage())
+                    .append("\ndisconnect : ").append(channelHandlerContext.channel().id())
+                    .toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        channelHandlerContext.close();
+        return true;
+    }
+}

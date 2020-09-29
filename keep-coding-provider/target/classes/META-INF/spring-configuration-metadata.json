@@ -1,0 +1,267 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.BaseConfig",
+      "name": "baseConfig",
+      "type": "cn.keep.coding.push.provider.config.BaseConfig"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.SmsConfig",
+      "name": "sms",
+      "type": "cn.keep.coding.push.provider.config.SmsConfig"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "name": "spring.redis",
+      "type": "cn.keep.coding.push.provider.config.RedisConfig"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "name": "spring.redis.pool",
+      "sourceMethod": "jedisPoolConfig()",
+      "type": "redis.clients.jedis.JedisPoolConfig"
+    }
+  ],
+  "properties": [
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.BaseConfig",
+      "name": "baseConfig.api-access-domain",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.SmsConfig",
+      "name": "sms.frequency",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.SmsConfig",
+      "name": "sms.source",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.SmsConfig",
+      "defaultValue": 0,
+      "name": "sms.time-out",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "defaultValue": 0,
+      "name": "spring.redis.database",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "name": "spring.redis.host",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "name": "spring.redis.password",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.block-when-exhausted",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.block-when-exhausted",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.eviction-policy-class-name",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.eviction-policy-class-name",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.fairness",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.fairness",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-enabled",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-enabled",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-name-base",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-name-base",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-name-prefix",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.jmx-name-prefix",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.lifo",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.lifo",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-idle",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-idle",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-total",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-total",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-wait-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.max-wait-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.min-evictable-idle-time-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.min-evictable-idle-time-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.min-idle",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.min-idle",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.num-tests-per-eviction-run",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.num-tests-per-eviction-run",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.soft-min-evictable-idle-time-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.soft-min-evictable-idle-time-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-borrow",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-borrow",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-create",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-create",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-return",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-on-return",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-while-idle",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.test-while-idle",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.time-between-eviction-runs-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "redis.clients.jedis.JedisPoolConfig",
+      "name": "spring.redis.pool.time-between-eviction-runs-millis",
+      "type": "java.lang.Long"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "defaultValue": 0,
+      "name": "spring.redis.port",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "cn.keep.coding.push.provider.config.RedisConfig",
+      "defaultValue": 0,
+      "name": "spring.redis.timeout",
+      "type": "java.lang.Integer"
+    }
+  ]
+}

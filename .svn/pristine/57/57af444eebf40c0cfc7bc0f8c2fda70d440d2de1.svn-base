@@ -1,0 +1,70 @@
+package cn.gnw.push.websocket.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.server.WSServer;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+
+/**
+ * 指令下发队列监听
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-22 16:44
+ */
+public class ToSendCommand extends BaseBS implements ChannelAwareMessageListener {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private int number = 1;
+
+    public ToSendCommand(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        JSONObject commandObject = null;
+        try {
+            String msg = new String(message.getBody());
+            logger.info(new StringBuffer("待发送WebSocket队列监听器[").append(this.number).append("]接收数据：").append(msg).toString());
+            commandObject = JSON.parseObject(msg);
+            if (msg.length()>32768){
+                getLogger().error(new StringBuffer("\nSEND COMMAND Params Too long Find \nParams : ")
+                        .append(commandObject).toString());
+            }else {
+                if (commandObject.containsKey("device_id")) {
+                    String deviceId = commandObject.getString("device_id");
+                    String bindServerIP = RedisUtil.getInstance().getServerIP(deviceId);
+                    if (null != bindServerIP && !bindServerIP.equals("")) {
+                        if (WSUtil.getServerIP().equals(bindServerIP)) {//判断该连接是否在本服务上
+                            WSServer server = SpringBeanConfig.getBean(WSServer.class);
+                            server.sendCommand(commandObject);
+                        }else {
+                            getLogger().info(new StringBuffer("\nSEND COMMAND No Bind This Server : ").append(bindServerIP)
+                                    .append("\nParams : ").append(commandObject).toString());
+                        }
+                    }else {
+                        getLogger().info(new StringBuffer("\nSEND COMMAND No Bind Server : ").append(bindServerIP)
+                                .append("\nParams : ").append(commandObject).toString());
+                    }
+                } else {
+                    getLogger().error(new StringBuffer("\nSEND COMMAND No Find \nParams : ")
+                            .append(commandObject).toString());
+                }
+            }
+        } catch (Exception e) {
+            getLogger().error(new StringBuffer("\nSEND COMMAND Error : ").append(e.getMessage())
+                    .append("\nParams : ").append(commandObject).toString());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+}

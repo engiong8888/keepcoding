@@ -1,0 +1,55 @@
+package cn.gnw.push.websocket.provider.server;
+
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import cn.gnw.push.websocket.provider.listener.WSConnectListener;
+import cn.gnw.push.websocket.provider.listener.WSDeviceDataListener;
+import cn.gnw.push.websocket.provider.listener.WSDisconnectListener;
+import cn.gnw.push.websocket.provider.listener.WSPingListener;
+import com.corundumstudio.socketio.SocketIOServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
+
+/**
+ * WebSocket Server
+ * (netty-Socket.IO)
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-13 21:47
+ */
+@Component
+public class WSPushServer {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Resource
+    private WSConfig wsConfig;
+    private SocketIOServer socket = null;
+
+    /**
+     * 开启及服务线程
+     */
+    public void start() {
+        wsConfig.init();
+        socket = wsConfig.getServer();
+        socket.addEventListener(WSConstants.DEVICE_EVENT, Object.class, new WSDeviceDataListener());//设备
+        socket.addConnectListener(new WSConnectListener());//连接
+        socket.addDisconnectListener(new WSDisconnectListener());//断开
+        socket.addPingListener(new WSPingListener());//心跳
+        socket.start();
+        logger.info("启动服务器....");
+    }
+
+    @PreDestroy
+    public void close() {
+        logger.info("关闭服务器....");
+        if (socket != null) {
+            socket.stop();
+        }
+    }
+
+}

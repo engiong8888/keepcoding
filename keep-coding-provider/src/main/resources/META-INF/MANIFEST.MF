@@ -1,0 +1,97 @@
+Manifest-Version: 1.0
+Class-Path: msg-simple-1.1.jar junit-4.12.jar spring-amqp-1.7.4.RELEAS
+ E.jar log4j-over-slf4j-1.7.25.jar spring-boot-starter-data-mongodb-1.
+ 5.7.RELEASE.jar jopt-simple-4.6.jar zipkin-reporter-0.7.0.jar ribbon-
+ transport-2.2.2.jar commons-logging-1.2.jar spring-webmvc-4.3.11.RELE
+ ASE.jar aspectjrt-1.8.10.jar servo-internal-0.10.1.jar netflix-common
+ s-util-0.1.1.jar jul-to-slf4j-1.7.25.jar xstream-1.4.9.jar jackson-co
+ re-2.8.10.jar objenesis-2.1.jar hibernate-core-5.0.12.Final.jar sprin
+ g-security-crypto-4.2.3.RELEASE.jar spring-messaging-4.3.11.RELEASE.j
+ ar spring-orm-4.3.11.RELEASE.jar javassist-3.21.0-GA.jar spring-aspec
+ ts-4.3.11.RELEASE.jar hamcrest-core-1.3.jar zipkin-1.23.2.jar spring-
+ data-mongodb-1.10.7.RELEASE.jar jboss-logging-3.3.1.Final.jar spring-
+ integration-amqp-4.3.12.RELEASE.jar spring-data-commons-1.13.7.RELEAS
+ E.jar unionpay-sdk-20171206.jar spring-cloud-netflix-core-1.3.1.RELEA
+ SE.jar spring-boot-actuator-1.5.7.RELEASE.jar spring-data-redis-1.8.7
+ .RELEASE.jar spring-context-support-4.3.11.RELEASE.jar spring-cloud-s
+ tarter-ribbon-1.3.1.RELEASE.jar logback-classic-1.1.11.jar xml-apis-1
+ .4.01.jar mybatis-spring-boot-starter-1.1.1.jar netty-3.5.7.Final.jar
+  spring-tuple-1.0.0.RELEASE.jar spring-cloud-starter-sleuth-1.2.1.REL
+ EASE.jar hibernate-validator-5.3.5.Final.jar byte-buddy-1.8.3.jar spr
+ ing-boot-starter-jdbc-1.5.7.RELEASE.jar spring-cloud-stream-binder-ra
+ bbit-core-1.2.1.RELEASE.jar spring-boot-starter-actuator-1.5.4.RELEAS
+ E.jar libphonenumber-6.2.jar xpp3_min-1.1.4c.jar jackson-databind-2.8
+ .10.jar spring-jdbc-4.3.11.RELEASE.jar spring-cloud-commons-1.2.2.REL
+ EASE.jar netflix-eventbus-0.3.0.jar jandex-2.0.0.Final.jar netflix-in
+ fix-0.3.0.jar archaius-core-0.7.4.jar jaxb-impl-2.1.jar rxnetty-conte
+ xts-0.4.9.jar spring-expression-4.3.11.RELEASE.jar spring-data-keyval
+ ue-1.2.7.RELEASE.jar antlr-runtime-3.4.jar spring-cloud-starter-bus-a
+ mqp-1.3.1.RELEASE.jar tomcat-embed-core-8.5.20.jar commons-pool2-2.4.
+ 2.jar antlr-2.7.7.jar dom4j-1.6.1.jar hibernate-jpa-2.1-api-1.0.0.Fin
+ al.jar tomcat-embed-el-8.5.20.jar spring-cloud-starter-eureka-1.3.1.R
+ ELEASE.jar aopalliance-1.0.jar c3p0-0.9.1.2.jar ribbon-core-2.2.2.jar
+  jersey-core-1.19.1.jar http-client-1.1.1.RELEASE.jar spring-integrat
+ ion-tuple-1.0.0.RELEASE.jar selenium-api-2.53.1.jar spring-cloud-cont
+ ext-1.2.2.RELEASE.jar jedis-2.9.0.jar aspectjweaver-1.8.10.jar tomcat
+ -jdbc-8.5.20.jar jsr305-3.0.0.jar netty-codec-4.0.27.Final.jar stax-a
+ pi-1.0.1.jar classmate-1.3.4.jar selenium-opera-driver-3.13.0.jar spr
+ ing-cloud-starter-stream-rabbit-1.2.1.RELEASE.jar javax.transaction-a
+ pi-1.2.jar spring-cloud-starter-1.2.2.RELEASE.jar spring-boot-1.5.7.R
+ ELEASE.jar selenium-support-2.53.1.jar spring-cloud-starter-config-1.
+ 3.1.RELEASE.jar cglib-nodep-3.2.4.jar hystrix-core-1.5.12.jar spring-
+ boot-starter-validation-1.5.7.RELEASE.jar jna-4.2.2.jar commons-confi
+ guration-1.8.jar jettison-1.3.7.jar spring-aop-4.3.11.RELEASE.jar mai
+ lapi-1.4.3.jar validation-api-1.1.0.Final.jar selenium-java-3.13.0.ja
+ r spring-boot-starter-aop-1.5.7.RELEASE.jar spring-web-4.3.11.RELEASE
+ .jar logback-core-1.1.11.jar spring-security-rsa-1.0.3.RELEASE.jar sd
+ k-Java-2017032418.jar netty-transport-native-epoll-4.0.27.Final.jar x
+ mlpull-1.1.3.1.jar tomcat-juli-8.5.20.jar bcprov-jdk15on-1.55.jar spr
+ ing-boot-starter-redis-1.4.7.RELEASE.jar rxnetty-servo-0.4.9.jar rhin
+ o-1.7R4.jar selenium-safari-driver-2.53.1.jar spring-boot-starter-web
+ -1.5.7.RELEASE.jar spring-cloud-starter-archaius-1.3.1.RELEASE.jar sp
+ ring-cloud-sleuth-zipkin-1.2.1.RELEASE.jar jaxb-api-2.1.jar jackson-a
+ nnotations-2.8.0.jar mysql-connector-java-5.1.44.jar spring-context-4
+ .3.11.RELEASE.jar tomcat-embed-websocket-8.5.20.jar kryo-shaded-3.0.3
+ .jar uri-template-0.9.jar netty-codec-http-4.0.27.Final.jar mongodb-d
+ river-core-3.4.3.jar selenium-chrome-driver-2.53.1.jar okio-1.14.1.ja
+ r eureka-client-1.6.2.jar selenium-remote-driver-2.53.1.jar netflix-s
+ tatistics-0.1.1.jar guice-4.1.0.jar minlog-1.3.0.jar eureka-core-1.6.
+ 2.jar spring-beans-4.3.11.RELEASE.jar jackson-coreutils-1.8.jar ribbo
+ n-httpclient-2.2.2.jar gnw-pub-base-0.0.4-SNAPSHOT.jar ribbon-eureka-
+ 2.2.2.jar jna-platform-4.1.0.jar amqp-client-4.0.3.jar javax.inject-1
+ .jar json-schema-core-1.2.5.jar ribbon-2.2.2.jar httpcore-4.4.6.jar f
+ astjson-1.2.47.jar mongodb-driver-3.4.3.jar jaxb-core-2.1.14.jar spri
+ ng-retry-1.2.1.RELEASE.jar spring-cloud-stream-binder-rabbit-1.2.1.RE
+ LEASE.jar gson-2.8.1.jar spring-boot-starter-amqp-1.5.7.RELEASE.jar s
+ pring-cloud-netflix-eureka-client-1.3.1.RELEASE.jar spring-boot-autoc
+ onfigure-1.5.7.RELEASE.jar jodd-core-3.4.10.jar commons-codec-1.10.ja
+ r bcpkix-jdk15on-1.55.jar ribbon-loadbalancer-2.2.2.jar jpush-client-
+ 3.3.7.jar rxjava-1.1.10.jar jcl-over-slf4j-1.7.25.jar commons-math-2.
+ 2.jar spring-cloud-bus-1.3.1.RELEASE.jar slf4j-api-1.7.25.jar servo-c
+ ore-0.10.1.jar spring-cloud-config-client-1.3.1.RELEASE.jar bson-3.4.
+ 3.jar stax-api-1.0-2.jar aliyun-java-sdk-core-4.0.3.jar hibernate-ent
+ itymanager-5.0.12.Final.jar okhttp-3.6.0.jar guava-18.0.jar selenium-
+ edge-driver-3.13.0.jar mybatis-3.4.0.jar spring-data-jpa-1.11.7.RELEA
+ SE.jar woodstox-core-asl-4.4.1.jar spring-boot-starter-data-jpa-1.5.7
+ .RELEASE.jar commons-jxpath-1.3.jar spring-cloud-starter-zipkin-1.2.1
+ .RELEASE.jar btf-1.2.jar spring-cloud-sleuth-core-1.2.1.RELEASE.jar s
+ pring-tx-4.3.11.RELEASE.jar snakeyaml-1.17.jar spring-rabbit-1.7.4.RE
+ LEASE.jar HdrHistogram-2.1.9.jar netty-all-4.1.6.Final.jar spring-oxm
+ -4.3.11.RELEASE.jar rxnetty-0.4.9.jar commons-collections-3.2.2.jar m
+ ybatis-spring-boot-autoconfigure-1.1.1.jar spring-boot-starter-1.5.7.
+ RELEASE.jar netty-common-4.0.27.Final.jar jsr311-api-1.1.1.jar common
+ s-exec-1.3.jar mybatis-spring-1.3.0.jar spring-boot-starter-tomcat-1.
+ 5.7.RELEASE.jar hibernate-commons-annotations-5.0.1.Final.jar spring-
+ boot-starter-logging-1.5.7.RELEASE.jar jersey-apache-client4-1.19.1.j
+ ar netty-buffer-4.0.27.Final.jar activation-1.1.1.jar stax2-api-3.1.4
+ .jar jiguang-common-1.1.1.jar netty-handler-4.0.27.Final.jar bcprov-j
+ dk15on-1.54.jar spring-integration-core-4.3.12.RELEASE.jar selenium-i
+ e-driver-2.53.1.jar spring-cloud-stream-codec-1.2.2.RELEASE.jar commo
+ ns-lang-2.6.jar joda-time-2.9.9.jar spring-cloud-stream-1.2.2.RELEASE
+ .jar netty-transport-4.0.27.Final.jar selenium-firefox-driver-3.4.0.j
+ ar stringtemplate-3.2.1.jar mail-1.4.7.jar httpclient-4.5.3.jar sprin
+ g-integration-jmx-4.3.12.RELEASE.jar json-schema-validator-2.2.6.jar 
+ spring-core-4.3.11.RELEASE.jar json-simple-1.1.1.jar jersey-client-1.
+ 19.1.jar
+Main-Class: cn.gnw.push.provider.controller.PostUtil
+

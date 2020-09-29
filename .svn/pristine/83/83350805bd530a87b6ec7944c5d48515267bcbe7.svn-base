@@ -1,0 +1,95 @@
+package cn.gnw.push.iosmdm.provider.util;
+
+import com.jiangge.utils.StringUtils;
+import com.jiangge.utils.TaskUtils;
+import com.jiangge.utils.task.TaskEntity;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class MDMTaskUtils {
+
+    private static Log logger = LogFactory.getLog(MDMTaskUtils.class);
+
+	/**
+	 * 同步设备信息到数据库
+	 * @param deviceId
+	 */
+	public static void syncDeviceInfo(String deviceId){
+		try{
+			Map<String, String> taskParam = new HashMap<String, String>();
+			taskParam.put("deviceId", deviceId);
+			TaskEntity task1 = new TaskEntity(MDMTasker.class,"syncDeviceInfo",taskParam);
+			TaskUtils.addTask(task1);
+			TaskEntity task2 = new TaskEntity(MDMTasker.class,"syncAppList",taskParam);
+			TaskUtils.addTask(task2);
+		}catch(Exception e){
+			logger.error("MDMTaskUtils->syncDeviceInfo:" + e.getMessage());
+		}
+	}
+	
+	/**
+	 * 通知第三方服务器更新
+	 * @param callBack
+	 * @param deviceId
+	 * @param status
+	 */
+	public static void sendCallBack(String callBack, String deviceId, String status){
+		if(StringUtils.isNotEmpty(callBack)){
+			try{
+				Map<String, String> taskParam = new HashMap<String, String>();
+				taskParam.put("callBack", callBack);
+				taskParam.put("deviceId", deviceId);
+				taskParam.put("status", status);
+				TaskEntity task = new TaskEntity(MDMTasker.class,"sendCallBack",taskParam);
+				TaskUtils.addTask(task);
+			}catch(Exception e){
+				logger.error("MDMTaskUtils->sendCallBack:" + e.getMessage());
+			}
+		}
+	}
+	
+	/**
+	 * 命令执行后通知第三方服务器更新
+	 * @param callBack
+	 */
+	public static void sendCommandCallBack(String callBack, String state, String commandId){
+		if(StringUtils.isNotEmpty(callBack)){
+			try{
+				Map<String, String> taskParam = new HashMap<String, String>();
+				taskParam.put("callBack", callBack);
+				taskParam.put("state", state);
+				taskParam.put("commandId", commandId);
+				TaskEntity task = new TaskEntity(MDMTasker.class,"sendCommandCallBack",taskParam);
+				TaskUtils.addTask(task);
+			}catch(Exception e){
+				logger.error("MDMTaskUtils->sendCommandCallBack:" + e.getMessage());
+			}
+		}
+	}
+
+	/**
+	 * 生成Mobileconfig描述文件
+	 *
+	 * @param configPath
+	 * @param tempPath
+	 * @param deviceId
+	 * @param source
+	 */
+	/*public static void createMobileconfig(String configPath,String tempPath,String deviceId,String source){
+		try{
+			Map<String, String> taskParam = new HashMap<String, String>();
+			taskParam.put("configPath", configPath);
+			taskParam.put("tempPath", tempPath);
+			taskParam.put("deviceId", deviceId);
+			taskParam.put("source", source);
+			TaskEntity task = new TaskEntity(MDMTasker.class,"createMobileconfig",taskParam);
+			TaskUtils.addTask(task);
+		}catch(Exception e){
+			logger.error("MDMTaskUtils->createMobileconfig:" + e.getMessage());
+		}
+	}*/
+
+}

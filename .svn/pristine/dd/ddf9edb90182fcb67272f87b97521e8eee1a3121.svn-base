@@ -1,0 +1,74 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "phone",
+    "temp_num",
+    "platform"
+  ],
+  "properties": {
+    "phone": {
+      "$id": "#/properties/phone",
+      "type": "string",
+      "title": "The Phone Schema",
+      "default": "",
+      "examples": [
+        "13111111111"
+      ],
+      "maxLength":11,
+      "pattern": "^1\\d{10}$"
+    },
+    "temp_num": {
+      "$id": "#/properties/temp_num",
+      "type": "string",
+      "title": "The Temp_num Schema",
+      "default": "",
+      "examples": [
+        "SMS_01"
+      ],
+      "maxLength":10,
+      "pattern": "^(.*)$"
+    },
+    "platform": {
+      "$id": "#/properties/platform",
+      "type": "string",
+      "title": "The Platform Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "temp_params": {
+      "$id": "#/properties/temp_params",
+      "type": "object",
+      "title": "The Temp_params Schema",
+      "properties": {
+        "code": {
+          "$id": "#/properties/temp_params/properties/code",
+          "type": "string",
+          "title": "The Code Schema",
+          "default": "",
+          "examples": [
+            "1111"
+          ],
+          "pattern": "^(.*)$"
+        },
+        "minute": {
+          "$id": "#/properties/temp_params/properties/minute",
+          "type": "string",
+          "title": "The Minute Schema",
+          "default": "",
+          "examples": [
+            "3"
+          ],
+          "pattern": "^(.*)$"
+        }
+      }
+    }
+  }
+}

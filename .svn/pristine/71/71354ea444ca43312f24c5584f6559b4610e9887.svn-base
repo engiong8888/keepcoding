@@ -1,0 +1,99 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import cn.gnw.push.websocket.provider.utils.PushWSUtil;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.AuthorizationListener;
+import com.corundumstudio.socketio.HandshakeData;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 授权连接
+ * bewrite :
+ * 验证通道
+ * 校验设备号 （请求设备中心接口,-- 耗时操作 --）=>限制AuthorizationListener中http最大请求数
+ * 判断是否顶号
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-10-31 17:31
+ */
+public class WSAuthorizationListener extends BaseBS implements AuthorizationListener {
+    WSConfig config = SpringBeanConfig.getBean(WSConfig.class);
+    String callBackUrl = config.getDeviceInfoUrl();
+    private static int MaxCout = 0;
+
+    @Override
+    public boolean isAuthorized(HandshakeData handshakeData) {
+        String strbody = "";
+        int resStatus = -1;
+        try {
+            //授权并发最大数限制
+            if (MaxCout > WSConstants.WS_AUTHORIZATION_MAX_COUT) {
+                return false;
+            }
+            MaxCout++;
+            Map<String, List<String>> map = (LinkedHashMap<String, List<String>>) handshakeData.getUrlParams();
+            if (map.containsKey("device_id") && map.containsKey("gnw_appid")
+                    && map.containsKey("version") && map.containsKey("sign")) {
+                String deviceId = map.get("device_id").get(0);
+                String channel = map.containsKey("channel") ? map.get("channel").get(0) : WSConstants.WS_CHANNEL_DATA;//默认数据通道
+                JSONObject callBackParams = new JSONObject();
+                callBackParams.put("device_id", deviceId);
+                callBackParams.put("gnw_appid", map.get("gnw_appid").get(0));
+                callBackParams.put("version", map.get("version").get(0));
+                callBackParams.put("sign", map.get("sign").get(0));
+                //判断通道类型
+                if (channel.equals(WSConstants.WS_CHANNEL_COMMAND) || channel.equals(WSConstants.WS_CHANNEL_DATA)) {
+                    RestTemplate restTemplate = new RestTemplate();
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
+                    HttpEntity<String> entity = new HttpEntity<String>(callBackParams.toJSONString(), headers);
+                    ResponseEntity<String> responseEntity = restTemplate.exchange(callBackUrl, HttpMethod.POST, entity, String.class);
+                    strbody = responseEntity.getBody();
+                    resStatus = responseEntity.getStatusCodeValue();
+                    JSONObject callbackResult = JSONObject.parseObject(strbody);
+                    //设备中心认证认证通过
+                    if (null != callbackResult && callbackResult.containsKey("status")
+                            && callbackResult.getIntValue("status") == 0) {
+                        JSONObject object = new JSONObject();
+                        object.put("device_id", deviceId);
+                        object.put("channel", channel);
+                        //判断该设备是否存在存在顶号情况
+                        if (RedisUtil.getInstance().isTopNumber(object) || true) {
+                            String client_Id = RedisUtil.getInstance().deviceToClient(object);
+                            if (null != client_Id) {
+                                //设备已存在通知服务停止旧客户端连接
+                                object.put("client_id", client_Id);
+                                PushWSUtil.getInstance().sendNoticeClose(object);
+                            }
+                            getLogger().info(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                                    .append("\nAuthorization Success :").append(map.toString())
+                                    .toString());
+                            MaxCout--;
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        MaxCout--;
+        getLogger().error(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                .append("\nAuthorization Error  UrlParams : ").append(handshakeData.getUrlParams())
+                .append("\nDevice Center Result : ").append(resStatus + ">>" + strbody)
+                .toString());
+        return false;
+    }
+}

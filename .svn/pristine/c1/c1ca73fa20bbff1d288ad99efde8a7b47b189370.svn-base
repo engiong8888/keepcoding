@@ -1,0 +1,51 @@
+package cn.gnw.push.websocket.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.server.WSServer;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+
+/**
+ * 状态变更队列监听
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-22 16:44
+ */
+public class ToSendStatusChange extends BaseBS implements ChannelAwareMessageListener {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private int number = 1;
+
+    public ToSendStatusChange(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        try {
+            String msg = new String(message.getBody());
+            logger.info(new StringBuffer("待发送WebSocket队列监听器[").append(this.number).append("]接收数据：").append(msg).toString());
+            JSONObject object = JSON.parseObject(msg);
+            WSServer server = SpringBeanConfig.getBean(WSServer.class);
+            if (WSConstants.COMMAND_NO_ONLINE
+                    .equals(object.getString("command_no"))) {
+                server.connect(object);
+            } else {
+                getLogger().error(new StringBuffer("Queue ToSendStatusChange No Find command_no : ")
+                        .append(object).toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+}

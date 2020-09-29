@@ -1,0 +1,156 @@
+/**
+ * 统一提示脚本
+ */
+
+/**
+ * 成功提示
+ * @param msg 提示信息
+ */
+function layer_alert_success(msg) {
+	parent.layer.alert(msg, {
+        skin: 'layui-layer-lan',
+        shift: 0,
+        icon:6
+    });
+}
+
+/**
+ * 错误提示
+ * @param msg 提示信息
+ */
+function layer_alert_error(msg) {
+	parent.layer.alert(msg, {
+        skin: 'layui-layer-red',
+        shift: 0 ,
+        icon:2
+    });
+}
+
+/**
+ * 一般信息提示
+ * @param msg 提示信息
+ */
+function layer_alert_info(msg) {
+	parent.layer.alert(msg, {
+        skin: 'layui-layer-molv',
+        shift: 0 ,
+        icon:1
+    });
+}
+
+/**
+ * 警告提示
+ * @param msg 提示信息
+ */
+function layer_alert_warning(msg) {
+	parent.layer.alert(msg, {
+        skin: 'layui-layer-red',
+        shift: 0 ,
+        icon:5
+    });
+}
+
+/**
+ * 危险提示
+ * @param msg 提示信息
+ */
+function layer_alert_dange(msg) {}
+
+/**
+ * 确认框样式一
+ * @param msg 提示信息
+ * @param yesCallBack 确定回调事件
+ */
+function layer_confirm1(msg, yesCallBack) {
+	parent.layer.confirm(msg, {
+		skin: 'layui-layer-lan',
+		shift: 0,
+	    btn: ['确定'],
+	    icon: 6
+	}, function(index){
+		parent.layer.close(index);
+		yesCallBack();
+	});
+}
+
+/**
+ * 确认框样式二
+ * @param msg 提示信息
+ * @param yesCallBack 确定回调事件
+ * @param cancelCallBack 取消回调事件
+ */
+function layer_confirm2(msg, yesCallBack, cancelCallBack) {
+	parent.layer.confirm(msg, {
+		skin: 'layui-layer-lan',
+		shift: 0,
+	    btn: ['确定', '取消'],
+	    icon: 6
+	}, function(index){
+		parent.layer.close(index);
+		yesCallBack();
+	}, function(index){
+		parent.layer.close(index);
+		cancelCallBack();
+	});
+}
+
+/**
+ * 确认框样式二
+ * @param msg 提示信息
+ * @param yesCallBack 确定回调事件
+ * @param cancelCallBack 取消回调事件
+ */
+function layer_confirm2_warning(msg, yesCallBack, cancelCallBack) {
+	parent.layer.confirm(msg, {
+		skin: 'layui-layer-red',
+		shift: 0,
+	    btn: ['确定', '取消'],
+	    icon: 5
+	}, function(index){
+		parent.layer.close(index);
+		yesCallBack();
+	}, function(index){
+		parent.layer.close(index);
+		cancelCallBack();
+	});
+}
+
+/**
+ * 警告确认框样式
+ * @param msg 提示信息
+ * @param yesCallBack 确定回调事件
+ */
+function layer_confirm_warning(msg, yesCallBack) {
+	parent.layer.confirm(msg, {
+		skin: 'layui-layer-red',
+		shift: 0,
+	    btn: ['确定'],
+	    icon: 5
+	}, function(index){
+		parent.layer.close(index);
+		yesCallBack();
+	});
+}
+
+/**
+ * 弹出窗口显示
+ * @param title 弹窗的标题
+ * @param width 弹窗的宽度
+ * @param height 弹窗的高度
+ * @param url 弹窗的URL
+ * @param successFun 弹窗成功后回调函数
+ * @param endFun 弹窗成功后关闭时回调函数
+ */
+function layer_layer_open(title, width, height, url, successFun, endFun){
+	parent.layer.open({
+		type: 2,
+		title: title,
+		shade: 0.1,
+		shadeClose: true,
+		closeBtn: false,
+		area: [width, height],
+		content: url,
+		success: successFun,
+		end: endFun
+   });
+}

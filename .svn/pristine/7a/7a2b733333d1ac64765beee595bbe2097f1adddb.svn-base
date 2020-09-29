@@ -1,0 +1,173 @@
+package cn.gnw.push.websocket.provider.server;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.SocketIOClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * ws推送
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-26 10:51
+ */
+@Service
+public class WSServer {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private WSConfig config = SpringBeanConfig.getBean(WSConfig.class);
+
+    /**
+     * ws连接成功 绑定关系
+     *
+     * @param params
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public void connect(JSONObject params) {
+        Map<String, String> mParams = new HashMap<String, String>();
+        try {
+            String deviceId = params.getString("device_id");
+            String channel = params.getString("channel");
+            //redis中未记录该设备，绑定记录插入数据库。
+            if (!RedisUtil.getInstance().isDeviceLogin(deviceId, channel)) {
+                SimpleMybatisDao simpleMybatisDao = SpringBeanConfig.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                mParams.put("device_id", deviceId);
+                mParams.put("channel", channel);
+                Map map = simpleMybatisDao.selectOne("push.ws.queryBindRecord", mParams, Map.class);
+                int status = 1;
+                mParams.put("client_id", params.getString("client_id"));
+                if (map == null) {
+                    mParams.put("bind_record_id", StringUtil.getUUIDString());
+                    mParams.put("platform", params.getString("platform"));
+                    mParams.put("status", "1");
+                    status = simpleMybatisDao.insert("push.ws.addPushWSRecord", mParams);
+                }
+                if (status == 1) {
+                    RedisUtil.getInstance().setDeviceBind(mParams);
+                    logger.debug("Binding Relationship Created Success,DeviceId : " + deviceId);
+                } else {
+                    logger.error("Binding Relationship Created Error,DeviceId : " + mParams);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Binding Relationship Created Error,DeviceId : " + params);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * ws关闭连接 解绑关系 (弃用)
+     *
+     * @param params
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public void disConnect(JSONObject params) {
+        String deviceId = params.getString("device_id");
+        String channel = params.getString("channel");
+        Map<String, String> mParams = new HashMap<String, String>();
+        try {
+            SimpleMybatisDao simpleMybatisDao = SpringBeanConfig.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            mParams.put("device_id", deviceId);
+            mParams.put("channel", channel);
+            Map map = simpleMybatisDao.selectOne("push.ws.queryBindRecord", mParams, Map.class);
+
+            if (map == null) {
+                logger.error(new StringBuffer("Disconnect Sql No Find This Device:")
+                        .append(deviceId).toString());
+            } else {
+                mParams.put("bind_record_id", map.get("bind_record_id").toString());
+                mParams.put("channel", channel);
+                int status = simpleMybatisDao.update("push.ws.unbind", mParams);
+                if (status == 1) {
+                    logger.debug("unBinding Relationship Success,DeviceId : " + deviceId);
+                } else {
+                    logger.error("unBinding Relationship Error,DeviceId : " + mParams);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("unBinding Relationship Error,DeviceId : " + mParams);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 下发指令逻辑
+     *
+     * @param params ｛指令｝
+     * @throws Exception
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public void sendCommand(JSONObject params) throws Exception {
+        String deviceId = params.getString("device_id");
+        //获取deviceId对应的clientId
+        JSONObject object = new JSONObject();
+        object.put("device_id", deviceId);
+        object.put("channel", WSConstants.WS_CHANNEL_COMMAND);
+        //获取通道 clientId
+        String clientId = RedisUtil.getInstance().deviceToClient(object);
+        //根据clientId获取SocketIOClient对象
+        if (clientId == null || clientId.equals("")) {
+            logger.error(new StringBuffer("\nSEND COMMAND No Find channel \nParams : ")
+                    .append(params).toString());
+        } else {
+            SocketIOClient client = config.getServer().getClient(UUID.fromString(clientId));
+//            String clientIP = WSUtil.getClientIP(client.getHandshakeData());
+//            指令发送ack
+//            client.sendEvent(WSConstants.COMMAND_EVENT, new AckCallback<Object>(Object.class) {
+//                @Override
+//                public void onSuccess(Object ack) {
+//                    logger.info(new StringBuffer("Send Command Ack Success ↓ DeviceId : ").append(deviceId)
+//                            .append("\n>>ClientId:").append(client.getSessionId())
+//                            .append("\n>>Content:").append(params)
+//                            .append("\n>>ClientIP:").append(WSUtil.getClientIP(client.getHandshakeData()))
+//                            .append("\n>>Ack : ").append(ack)
+//                            .toString());
+//                }
+//
+//                @Override
+//                public void onTimeout() {
+//                    super.onTimeout();
+//                    logger.error(new StringBuffer("Send Command Timeout : ").append(object).toString());
+//                }
+//            }, params.toJSONString());
+            client.sendEvent(WSConstants.COMMAND_EVENT, params.toJSONString());
+            logger.info(new StringBuffer("\nSEND COMMAND SUCCESS \nParams : ")
+                    .append(params).toString());
+        }
+    }
+
+    /**
+     * 将数据库绑定记录 存入redis
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public void initDeviceBindToRedis() {
+        try {
+            SimpleMybatisDao simpleMybatisDao = SpringBeanConfig.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> deviceList = simpleMybatisDao.selectList("push.ws.queryDevice", null, Map.class);
+            RedisUtil.getInstance().initDeviceBind(deviceList);
+            logger.info("initDeviceBind Success");
+        } catch (Exception e) {
+            logger.error(new StringBuffer("initDeviceBindToRedis Error : ")
+                    .append(e.getMessage()).toString());
+        }
+
+    }
+}

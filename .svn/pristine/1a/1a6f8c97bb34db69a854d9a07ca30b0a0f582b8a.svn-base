@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.huawei">
+
+    <!-- 华为推送通知记录表 -->
+    <resultMap id="huaweiPushRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_id" column="app_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="allias" column="allias" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="title" column="title" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="is_reach" column="is_reach" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="reach_time" column="reach_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="request_id" column="request_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 华为推送绑定记录表 -->
+    <resultMap id="huaweiBindRecord" type="java.util.Map">
+        <result property="bind_record_id" column="bind_record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="bind_time" column="bind_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 华为配置信息 -->
+    <resultMap id="huaweiConfig" type="java.util.Map">
+        <result property="config_id" column="config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_id" column="app_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_secret" column="app_secret" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_pkg" column="app_pkg" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 增加绑定记录 -->
+    <insert id="addPushHuaweiConfig" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_huawei_config(config_id, app_id, app_secret, app_pkg, enabled, source, remark)
+        VALUES(#{config_id}, #{app_id}, #{app_secret}, #{app_pkg}, #{enabled}, #{source}, #{remark})
+    </insert>
+
+    <!-- 查询华为配置 -->
+    <select id="queryPushHuaweiConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="huaweiConfig">
+       SELECT * FROM t_push_huawei_config t
+       WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+          AND enabled = #{enabled}
+        </if>
+        order by t.source
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+   </select>
+
+    <!-- 查询华为总条数 -->
+    <select id="queryPushHuaweiConfigCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_huawei_config t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND enabled = #{enabled}
+        </if>
+
+    </select>
+
+    <!-- 根据设备号查询注册id -->
+    <select id="queryOneRegIdByDevice" parameterType="java.util.Map" resultType="java.lang.String">
+      SELECT t.regist_id FROM t_push_huawei_bind_record t where 1 = 1 and t.device_id = #{deviceId}
+    </select>
+
+    <!-- 根据设备号查询推送服务器注册id列表 -->
+    <select id="queryIdListByDevices" parameterType="java.util.Map" resultType="java.lang.String">
+    SELECT t.regist_id FROM t_push_huawei_bind_record t where 1 = 1
+        <if test="devices != NULL ">
+            AND
+            <foreach item="item" index="index" collection="devices" open="(" separator=" OR " close=")">
+                t.device_id = #{item} and t.status = '1'
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 增加vivo推送记录 -->
+    <insert id="addPushHuaweiRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_huawei_record(record_id, app_id, regist_id, alias, platform, title, content, result, send_time, status, remark)
+        VALUES(#{record_id}, #{app_id}, #{regId}, #{alias}, #{platform}, #{title}, #{content}, #{result}, NOW(), #{status}, #{remark})
+    </insert>
+
+    <!-- 增加vivo推送记录 -->
+    <insert id="addPushHuaweiRecordList" parameterType="java.util.Map">
+        INSERT INTO t_push_huawei_record(record_id, app_id, regist_id, platform, title, content, result, send_time, status, request_id, remark)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.record_id}, #{item.app_id}, #{item.regist_id}, #{item.platform}, #{item.title}, #{item.content}, #{item.result}, NOW(), #{item.status}, #{item.request_id}, #{item.remark})
+        </foreach>
+    </insert>
+
+    <!-- 获取绑定记录 -->
+    <select id="queryBindRecord" parameterType="java.lang.String" resultMap="huaweiBindRecord">
+        SELECT * from t_push_huawei_bind_record t
+        where 1 = 1
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 增加绑定记录 -->
+    <insert id="addBindRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_huawei_bind_record(bind_record_id, device_id, regist_id, platform, bind_time)
+        VALUES(#{bind_record_id}, #{device_id}, #{regist_id}, #{platform}, NOW())
+    </insert>
+
+    <!--重新绑定 更新regist_id-->
+    <update id="updateHuaweiBindRegId" parameterType="java.util.Map">
+        UPDATE t_push_huawei_bind_record t
+		SET t.regist_id = #{regist_id}, t.status = '1'
+		WHERE t.bind_record_id = #{bind_record_id}
+    </update>
+
+    <!-- 解除绑定关系 -->
+    <update id="unbind" parameterType="java.util.Map">
+        UPDATE t_push_huawei_bind_record t
+		SET t.status = #{status}
+		WHERE t.bind_record_id = #{bind_record_id}
+		<if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+    </update>
+
+    <!-- 推送回执更新 -->
+    <update id="updateReachReceipt" parameterType="java.util.List">
+        update t_push_huawei_record
+        <trim prefix="set" suffixOverrides=",">
+            <trim prefix="is_reach =case" suffix="end,">
+                <foreach collection="list" item="item" index="index">
+                    when request_id = #{item.requestId} and regist_id = #{item.token} then #{item.status}
+                </foreach>
+            </trim>
+            <trim prefix="reach_time =case" suffix="end,">
+                <foreach collection="list" item="item" index="index">
+                    when request_id = #{item.requestId} and regist_id = #{item.token} then #{item.timestamp}
+                </foreach>
+            </trim>
+        </trim>
+        where
+        <foreach collection="list" index="index" item="item" separator="or">
+            (request_id = #{item.requestId} AND regist_id = #{item.token})
+        </foreach>
+    </update>
+
+    <!-- 查询华为推送记录 -->
+    <select id="queryPushHuaweiRecord" parameterType="com.alibaba.fastjson.JSONObject" resultMap="huaweiPushRecord">
+        SELECT *
+        FROM t_push_huawei_record t
+        WHERE 1 = 1
+        <if test="app_id != NULL and app_id != ''">
+            AND t.app_id = #{app_id}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.app_id = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="is_reach != NULL and is_reach != ''">
+            <if test="is_reach =='0'">
+                AND t.is_reach = #{is_reach}
+            </if>
+            <if test="is_reach !='0'">
+                AND t.is_reach != '0'
+            </if>
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL and limit != ''">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+
+    </select>
+
+    <!-- 查询华为推送记录总条数 -->
+    <select id="queryPushHuaweiRecordCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_huawei_record t
+        WHERE 1 = 1
+        <if test="app_id != NULL and app_id != ''">
+            AND t.app_id = #{app_id}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.app_id = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="is_reach != NULL and is_reach != ''">
+            <if test="is_reach =='0'">
+                AND t.is_reach = #{is_reach}
+            </if>
+            <if test="is_reach !='0'">
+                AND t.is_reach != '0'
+            </if>
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+
+    </select>
+
+</mapper>

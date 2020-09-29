@@ -1,0 +1,56 @@
+package cn.gnw.push.api.entity.websocket;
+
+/**
+ * websocket常量
+ *
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-09-29 11:34
+ */
+public class WSConstants {
+    public final static String WSCONTENT = "/push/ws";//websocet context
+    /*------------------------    项目内部特殊指令COMMAND_NO (非设备中心指令)    -----------------*/
+    public final static String COMMAND_NO_SIX = "6666";  //同步redis设备状态 至MYSQL
+    /*------------------------    客户端渠道标识    -----------------*/
+    public final static String WS_CHANNEL_DATA = "01";//数据上报通道
+    public final static String WS_CHANNEL_COMMAND = "02";//指令下发通道
+    /*------------------------    项目中redis特殊键值    ------------------------*/
+    public final static String WS_RS_HEART_BEAT = "ws_heart_beat";//心跳标识  N分钟刷新一次，记录当前在线人数
+    public final static String WS_RS_ONLINE = "ws_online";//在线标识, hset("online",deviceId,clientId) 设备在线标识
+    public final static String WS_RS_BIND_SERVER = "ws_bind_server";//device->serverIP 关系,用于离线指令
+    public final static String WS_RS_COUNT = "ws_count";//设备登陆次数标识
+    public final static int WS_AUTHORIZATION_MAX_COUT = 100;
+    public final static int WS_RS_COUNT_EEXPIRED = 10;//登陆标识过期时间
+    public final static int WS_RS_MAX_COUT = 3;//登陆标识时间内最大允许登陆次数
+    public final static int WS_RS_ONLINE_TTL = 360; //在线标识超时
+    public final static String WS_RS_DEVICE_BIND = "ws_device_bind";
+    /*------------------------    客户端ACK回执    -----------------------*/
+    public final static int ACK_SUCCESS = 0;
+    public final static int ACK_ERROR = -1;
+
+    /*------------------------    推送rabbitMQ    ------------------------*/
+    public final static String RMQ_GNW_PUSH_WS_EXCHANGE = "gnw_push_ws_mq_exchange";// 推送服务WebSocket 交换机
+    public final static String RMQ_GNW_PUSH_WS_SEND_DEVICE_QUEUE = "gnw_push_ws_send_device_queue";// 推送服务WebSocket 设备消息队列 接受 KEY & 队列名称 （设备中心）
+    public final static String RMQ_GNW_PUSH_WS_SEND_STATUS_CHANGE = "gnw_push_ws_status_change";//推送服务WebSocket 状态变更消息队列 接受 KEY & 队列名称 （内部）
+    /*------------------------    广播（通知服务关闭旧连接）    --------------------------*/
+    public final static String RMQ_GNW_PUSH_WS_EXCHANGE_TOPIC = "gnw_push_ws_mq_exchange_topic";// 推送服务WebSocket 交换机
+    public final static String RMQ_GNW_PUSH_WS_SEND_NOTICE_CLOSE = "gnw_push_ws_notice_close";//推送服务WebSocket 通知 关闭连接 消息队列 接受 KEY & 队列名称 （内部）
+    public final static String RMQ_GNW_PUSH_WS_SEND_COMMAND_QUEUE = "gnw_push_ws_command_queue";   // 推送服务WebSocket 指令消息队列 接受 KEY & 队列名称 （设备中心）
+    /*------------------------    设备中心rabbitMQ     ------------------------*/
+    public final static String RMQ_GNW_DEVICE_EXCHANGE = "gnw_device_exchange";// 设备中心服务 交换机
+    public final static String RMQ_GNW_DEVICE_MONITOR_QUEUE = "gnw_device_monitor_queue";//设备中心，设备状态同步消息队列 接受 KEY & 队列名称 （设备中心）
+
+    /*------------------------    设备中心    ----------------*/
+    //设备离线指令编号&名称
+    public final static String COMMAND_NO_OFFLINE = "0000";
+    public final static String REPORT_DEVICE_OFFLINE = "report_device_offline";
+    //设备在线指令编号&名称
+    public final static String COMMAND_NO_ONLINE = "0001";
+    public final static String REPORT_DEVICE_ONLINE = "report_device_online";
+
+    /*-------------------------    客户端EVENT_NAME    -----------------------*/
+    //数据上报
+    public final static String DEVICE_EVENT = "device_event";//数据上报
+    public final static String COMMAND_EVENT = "command_event";//指令下发
+
+}

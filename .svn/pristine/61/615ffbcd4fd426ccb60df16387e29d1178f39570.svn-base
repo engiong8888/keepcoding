@@ -1,0 +1,53 @@
+package cn.gnw.push.iosmdm.consumer.interfaces;
+
+import cn.gnw.push.iosmdm.consumer.fallback.PushIosMdmServiceClientFallback;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * iosmdm推送服务接口
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-06 15:11
+ */
+@FeignClient(value = "gnw-push-iosmdm-provider", fallback = PushIosMdmServiceClientFallback.class)
+public interface PushIosMdmServiceClient {
+
+    @GetMapping("/user/download")
+    public String downConfig(@RequestParam("uid")String uid,@RequestParam("source") String source);
+
+    @PutMapping("/mdm/checkin")
+    public String checkin(@RequestBody JSONObject body);
+
+    @PutMapping("/mdm/server")
+    public String server(@RequestBody JSONObject body);
+
+    @PostMapping("/device/lock")
+    public String deviceLock(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/info")
+    public String deviceInformation(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/apps")
+    public String deviceInstalledAppsList(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/install")
+    public String deviceInstallApplication(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/remove")
+    public String deviceRemoveApplication(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/restriction/system/app")
+    public String restrictionSystemApplication(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/install/filter/url")
+    public String installFilterUrl(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/install/blacklist/apps")
+    public String installBlacklistApps(@RequestBody JSONObject rParams);
+
+    @PostMapping
+    public String getIosMdmDeviceId(@RequestBody JSONObject rParams);
+}

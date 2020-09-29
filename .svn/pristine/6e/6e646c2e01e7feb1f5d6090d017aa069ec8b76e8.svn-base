@@ -1,0 +1,56 @@
+package cn.gnw.push.websocket.provider.utils;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+/**
+ * 推送工具类
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-09-18 16:14
+ */
+public class PushWSUtil {
+    private PushWSUtil() {
+    }
+
+    private static class PushWSUtilManageHolder extends BaseBS {
+        private static PushWSUtil instance = new PushWSUtil();
+    }
+
+    public static PushWSUtil getInstance() {
+        return PushWSUtilManageHolder.instance;
+    }
+
+    public Object sendDeviceMsg(Object object) {
+        RabbitTemplate rabbitTemplate = SpringBeanConfig.getBean("rabbitTemplate", RabbitTemplate.class);
+        rabbitTemplate.convertAndSend(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE,
+                WSConstants.RMQ_GNW_PUSH_WS_SEND_DEVICE_QUEUE, object);
+        return object;
+    }
+
+    //指令下发，自测时使用
+    public Object sendCommandMsg(Object object) {
+        RabbitTemplate rabbitTemplate = SpringBeanConfig.getBean("rabbitTemplate", RabbitTemplate.class);
+        rabbitTemplate.convertAndSend(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE,
+                WSConstants.RMQ_GNW_PUSH_WS_SEND_COMMAND_QUEUE, object);
+        return object;
+    }
+
+    public Object sendStatusChange(Object object) {
+        RabbitTemplate rabbitTemplate = SpringBeanConfig.getBean("rabbitTemplate", RabbitTemplate.class);
+        rabbitTemplate.convertAndSend(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE,
+                WSConstants.RMQ_GNW_PUSH_WS_SEND_STATUS_CHANGE, object);
+        return object;
+    }
+
+    public Object sendNoticeClose(Object object) {
+        RabbitTemplate rabbitTemplate = SpringBeanConfig.getBean("rabbitTemplate", RabbitTemplate.class);
+        rabbitTemplate.convertAndSend(WSConstants.RMQ_GNW_PUSH_WS_EXCHANGE_TOPIC,
+                WSConstants.RMQ_GNW_PUSH_WS_SEND_NOTICE_CLOSE, object);
+        return object;
+    }
+
+}

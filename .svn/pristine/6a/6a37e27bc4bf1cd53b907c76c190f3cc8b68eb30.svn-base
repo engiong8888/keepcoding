@@ -1,0 +1,163 @@
+package cn.gnw.push.api.entity.iosmdm;
+
+import java.sql.Timestamp;
+
+/**
+ * iosmdm推送绑定记录表
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-30 11:00
+ */
+public class IosMdmBindRecord {
+
+    private String bindRecordId;
+
+    private String deviceId;
+
+    private String udid;
+
+    private String pushMagic;
+
+    private String control;
+
+    private String isActivationLockEnabled;
+
+    private String isCloudBackupEnabled;
+
+    private String isDeviceLocatorServiceEnabled;
+
+    private String isSupervised;
+
+    private String topic;
+
+    private String token;
+
+    private String unlockToken;
+
+    private String deviceIdFromDc;
+
+    private Timestamp createTime;
+
+    private Timestamp updateTime;
+
+    public String getBindRecordId() {
+        return bindRecordId;
+    }
+
+    public void setBindRecordId(String bindRecordId) {
+        this.bindRecordId = bindRecordId;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getUdid() {
+        return udid;
+    }
+
+    public void setUdid(String udid) {
+        this.udid = udid;
+    }
+
+    public String getPushMagic() {
+        return pushMagic;
+    }
+
+    public void setPushMagic(String pushMagic) {
+        this.pushMagic = pushMagic;
+    }
+
+    public String getControl() {
+        return control;
+    }
+
+    public void setControl(String control) {
+        this.control = control;
+    }
+
+    public String getIsActivationLockEnabled() {
+        return isActivationLockEnabled;
+    }
+
+    public void setIsActivationLockEnabled(String isActivationLockEnabled) {
+        this.isActivationLockEnabled = isActivationLockEnabled;
+    }
+
+    public String getIsCloudBackupEnabled() {
+        return isCloudBackupEnabled;
+    }
+
+    public void setIsCloudBackupEnabled(String isCloudBackupEnabled) {
+        this.isCloudBackupEnabled = isCloudBackupEnabled;
+    }
+
+    public String getIsDeviceLocatorServiceEnabled() {
+        return isDeviceLocatorServiceEnabled;
+    }
+
+    public void setIsDeviceLocatorServiceEnabled(String isDeviceLocatorServiceEnabled) {
+        this.isDeviceLocatorServiceEnabled = isDeviceLocatorServiceEnabled;
+    }
+
+    public String getIsSupervised() {
+        return isSupervised;
+    }
+
+    public void setIsSupervised(String isSupervised) {
+        this.isSupervised = isSupervised;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getUnlockToken() {
+        return unlockToken;
+    }
+
+    public void setUnlockToken(String unlockToken) {
+        this.unlockToken = unlockToken;
+    }
+
+    public String getDeviceIdFromDc() {
+        return deviceIdFromDc;
+    }
+
+    public void setDeviceIdFromDc(String deviceIdFromDc) {
+        this.deviceIdFromDc = deviceIdFromDc;
+    }
+
+    public Timestamp getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Timestamp createTime) {
+        this.createTime = createTime;
+    }
+
+    public Timestamp getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(Timestamp updateTime) {
+        this.updateTime = updateTime;
+    }
+}

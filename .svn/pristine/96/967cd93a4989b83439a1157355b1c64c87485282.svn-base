@@ -1,0 +1,161 @@
+$(function(){
+	// 文档一加载获取左侧菜单栏和中间内容区域的高度
+	$(".sidebar,.sidebar-s").height($(window).height()-49);
+	$(".main-box").height($(window).height()-137);
+	$(window).resize(function(){
+		$(".main-box").height($(window).height()-137);
+		$(".sidebar,.sidebar-s").height($(window).height()-49);
+
+	});
+
+	// 点击左侧导航菜单出现选项卡
+	$('.sub-list li').click(function(){
+		$('.sidebar-menu .sub-list li').removeClass('on');
+		$(this).addClass('on');
+		var letit = $(this).attr('tit');
+		var target = $(this).attr('data-target');
+		var key = $(this).attr('data-key');
+		createtab(letit, target, key);
+	});
+
+	// 关闭所有的选项卡
+	$('.tab-titbox b').on('click',function(){
+		$('.tab-tit li:not(:eq(0))').remove();
+		$('.tab-tit li').addClass('on');
+		$('.main-box .con-box:not(:eq(0))').remove();
+		$('.main-box .con-box').addClass('on');
+		$('.tab-titbox b').hide();
+	});
+	
+	// 侧边栏隐藏的时候进行点击
+	$('.sidebar-s i').click(function(){
+		$('.sidebar').animate({
+			'left': '0px'
+		},400);
+		$('.content').animate({
+			'marginLeft':'198px'
+		},400);
+	});
+
+	// 当有左侧边栏的时候进行点击
+	$('.side-toggler').click(function(){
+		var sideWidth = $(this).parent('.sidebar').width();
+		$('.sidebar').animate({
+			'left': '-'+sideWidth+'px'
+		},400);
+		$('.content').animate({
+			'marginLeft':'35px'
+		},400);
+		$('.sidebar-s').show().animate({
+			'left': '0px'
+		},600);
+	});
+
+
+	// 左侧边栏点击出现列表页
+	var sideBool = true;
+	$('.side-tit').bind('click',function(){
+		$(this).siblings('.sub-list').toggle();
+		$('.sidebar-box').tinyscrollbar().data("plugin_tinyscrollbar").update("top");
+	});
+});
+
+/**
+ * 创建标签页
+ * @param letit 标题
+ * @param target 地址
+ * @param key 标识
+ */
+function createtab(letit, target, key){
+	var bool = true;
+	// 判断是否需要增加新的导航标签节点
+	$('.tab-tit li').each(function(){
+		if(letit == $(this).attr('tit')){
+			$(this).addClass('on').siblings().removeClass('on');
+			$('.main-box .con-box').eq($(this).index()).addClass('on').siblings().removeClass('on');
+			bool = false;
+		}
+	});
+	//订单管理特殊处理
+	if(letit.indexOf("订单管理") != -1){
+		letit = "订单管理" + formatMMSS(0);
+		if(orderIndexCount >6){
+			layer.msg("订单管理最多只能打开6个页签!", { icon: 1, time: 1000 }, function(){});
+			bool = false;
+		}else{
+			orderIndexCount = orderIndexCount + 1;
+		}
+	}
+	if(bool) {
+		// 在导航标签中增加节点
+		$('<li tit="'+letit+'"><span>'+letit+'</span><em></em></li>').appendTo('.content .tab-tit').addClass('on').siblings().removeClass('on');
+		$('<div class="con-box clearfix">').appendTo('.main-box').addClass('on').siblings().removeClass('on');
+		$('<iframe name="' + key + '" width="100%" height="100%" frameborder="0" src="' + ctx + target + '"></iframe>').appendTo('.con-box.clearfix.on');
+
+		changeWidth();
+		// 关闭导航选项卡
+		$('.tab-tit li em').unbind('click').bind('click',function(){
+			closebox($(this));
+		});
+		$('.tab-tit li span').unbind('dblclick').bind('dblclick',function(){
+			if($(this).siblings('em').length == 1){
+				closebox($(this));
+			}
+		});
+		// 点击导航标签进行tab样式切换
+		$('.tab-tit li').unbind('click').click(function(){
+			$(this).addClass('on').siblings().removeClass('on');
+			$('.main-box .con-box').eq($(this).index()).addClass('on').siblings().removeClass('on');
+		});
+	}
+}
+
+// 关闭导航选项卡
+function closebox(obj){
+	var ls = obj.parent();
+	var ln = ls.prev();
+	var cb = $('.main-box .con-box').eq(ls.index());
+	var lc = $('.main-box .con-box').eq(ls.index()).prev();
+	//订单管理特殊处理
+	var letit = ls.attr('tit');
+	if(letit.indexOf("订单管理") != -1){
+		orderIndexCount = orderIndexCount - 1;
+	}
+	ls.remove();
+	ln.addClass('on').siblings('li').removeClass('on');	
+	cb.remove();
+	lc.addClass('on').siblings('.con-box').removeClass('on');
+	changeWidth();
+}
+
+// 改变窗口大小
+window.onresize = function(){
+	changeWidth();
+};
+
+// 改变选项卡的宽度
+function changeWidth(){
+	var eleli = $('.tab-tit li');
+	var elespan = $('.tab-tit li span');
+	var tbW = $('.tab-titbox').width() - 60;
+	var nowLen = eleli.length;
+	var nowWid = Math.floor(tbW/nowLen)-2;
+	var maxNum = Math.floor(tbW/134);
+	$('.tab-tit').css({
+		width:tbW
+	});
+	if(nowLen>=2){
+		$('.tab-titbox b').fadeIn();
+	}
+	if(nowLen>=maxNum) {
+		eleli.css({
+			width:nowWid
+		});
+		elespan.css({
+			width:nowWid-14
+		});
+	}
+};
+
+
+

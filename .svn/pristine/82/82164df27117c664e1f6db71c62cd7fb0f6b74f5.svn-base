@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.jiguang">
+
+    <!-- 极光推送记录表 -->
+    <resultMap id="jiguangPushRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_key" column="app_key" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="alias" column="alias" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="title" column="title" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 极光配置信息 -->
+    <resultMap id="jiguangConfig" type="java.util.Map">
+        <result property="jg_config_id" column="jg_config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_key" column="app_key" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="master_secret" column="master_secret" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+
+    </resultMap>
+
+    <!-- 极光推送绑定记录表 -->
+    <resultMap id="jiguangBindRecord" type="java.util.Map">
+        <result property="bind_record_id" column="bind_record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="bind_time" column="bind_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 查询极光配置 -->
+   <select id="queryPushJgConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="jiguangConfig">
+       SELECT * FROM t_push_jiguang_config t
+       WHERE 1 = 1
+       <if test="source != NULL and source != ''">
+           AND t.source = #{source}
+       </if>
+       <if test="enabled != NULL and enabled != ''">
+        AND t.enabled = #{enabled}
+       </if>
+       order by t.source
+       <if test="limit != NULL">
+           LIMIT #{limit}
+       </if>
+       <if test="pos != NULL and pos != ''">
+           OFFSET #{pos}
+       </if>
+   </select>
+
+    <!-- 查询极光配置总条数 -->
+    <select id="queryPushJgConfigCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_jiguang_config t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND t.enabled = #{enabled}
+        </if>
+    </select>
+
+    <!-- 增加极光推送配置 -->
+    <insert id="addPushJiguangConfig" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_jiguang_record(jg_config_id, app_key, master_secret, enabled, source, remark)
+        VALUES(#{jg_config_id}, #{app_key}, #{master_secret}, #{enabled}, #{source}, #{remark})
+    </insert>
+
+    <!-- 增加极光推送记录 -->
+    <insert id="addPushJiguangRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_jiguang_record(record_id, app_key, client_id, title, content, result, send_time, remark)
+        VALUES(#{record_id}, #{app_key}, #{client_id}, #{title}, #{content}, #{result}, NOW(), #{remark})
+    </insert>
+
+    <!-- 增加极光推送记录 -->
+    <insert id="addPushJiguangRecordList" parameterType="java.util.Map">
+        INSERT INTO t_push_jiguang_record(record_id, app_key, regist_id, title, content, platform, result, send_time, status, remark)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.record_id}, #{item.app_key}, #{item.registration_id}, #{item.title}, #{item.content}, #{item.platform}, #{item.result}, NOW(), #{item.status}, #{item.remark})
+        </foreach>
+    </insert>
+
+    <!-- 根据设备号查询推送服务器注册id列表 -->
+    <select id="queryIdListByDevices" parameterType="java.util.Map" resultType="java.lang.String">
+        SELECT t.regist_id FROM t_push_jiguang_bind_record t where 1 = 1
+        <if test="devices != NULL ">
+            AND
+            <foreach item="item" index="index" collection="devices" open="(" separator=" OR " close=")">
+                t.device_id = #{item} and t.status = '1'
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 获取绑定记录 -->
+    <select id="queryBindRecord" parameterType="java.lang.String" resultMap="jiguangBindRecord">
+        SELECT * from t_push_jiguang_bind_record t
+        where 1 = 1
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 增加绑定记录 -->
+    <insert id="addBindRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_jiguang_bind_record(bind_record_id, device_id, regist_id, platform, bind_time)
+        VALUES(#{bind_record_id}, #{device_id}, #{regist_id}, #{platform}, NOW())
+    </insert>
+
+    <!--重新绑定 更新regist_id-->
+    <update id="updateJgBindRegId" parameterType="java.util.Map">
+        UPDATE t_push_jiguang_bind_record t
+		SET t.regist_id = #{regist_id}, t.status = '1'
+		WHERE t.bind_record_id = #{bind_record_id}
+    </update>
+
+    <!-- 解除绑定关系 -->
+    <update id="unbind" parameterType="java.util.Map">
+        UPDATE t_push_jiguang_bind_record t
+        SET t.status = #{status}
+        WHERE t.bind_record_id = #{bind_record_id}
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+    </update>
+
+    <!-- 获取极光推送记录 -->
+    <select id="queryPushJiguangRecord" parameterType="java.lang.String" resultMap="jiguangPushRecord">
+        SELECT * from t_push_jiguang_record t
+        where 1 = 1
+        <if test="app_key != NULL and app_key != ''">
+            AND t.app_key = #{app_key}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.platform = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+    </select>
+
+    <!-- 获取极光推送记录总条数 -->
+    <select id="queryPushJiguangRecordCount" parameterType="java.lang.String" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_jiguang_record t
+        WHERE 1 = 1
+        <if test="app_key != NULL and app_key != ''">
+            AND t.app_key = #{app_key}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.platform = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+    </select>
+</mapper>

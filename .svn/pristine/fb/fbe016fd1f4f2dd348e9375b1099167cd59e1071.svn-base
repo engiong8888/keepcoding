@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.websocket">
+
+
+    <!-- 短信发送记录 -->
+    <resultMap id="websocketRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="client_id" column="client_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="client_ip" column="client_ip" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+
+    </resultMap>
+
+    <!-- 查询websocket推送通知记录 -->
+    <select id="queryPushWebsocketRecord" parameterType="com.alibaba.fastjson.JSONObject" resultMap="websocketRecord">
+        SELECT *
+        FROM t_push_websocket_record t
+        WHERE 1 = 1
+        <if test="client_id != NULL and client_id != ''">
+            AND t.client_id = #{client_id}
+        </if>
+        <if test="client_ip != NULL and client_ip != ''">
+            AND t.client_ip = #{client_ip}
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+    </select>
+
+    <!-- 查询websocket推送通知记录总条数 -->
+    <select id="queryPushWebsocketRecordCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_websocket_record t
+        WHERE 1 = 1
+        <if test="client_id != NULL and client_id != ''">
+            AND t.client_id = #{client_id}
+        </if>
+        <if test="client_ip != NULL and client_ip != ''">
+            AND t.client_ip = #{client_ip}
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,59 @@
+package java.cn.gnw.push.manager;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.web.support.SpringBootServletInitializer;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import java.cn.gnw.push.manager.filter.SessionFilter;
+
+/**
+ * 推送服务管理者启动类
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-08-23 15:03
+ */
+@SpringBootApplication(exclude={
+    RedisAutoConfiguration.class, RedisRepositoriesAutoConfiguration.class,
+    MongoAutoConfiguration.class, MongoDataAutoConfiguration.class
+})
+@EnableTransactionManagement
+@EnableEurekaClient
+public class GnwPushManagerApplication extends SpringBootServletInitializer {
+
+    public static void main(String[] args) {
+        SpringApplication.run(GnwPushManagerApplication.class, args);
+    }
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(GnwPushManagerApplication.class);
+    }
+
+    @Override
+    public void onStartup(ServletContext servletContext) throws ServletException {
+        super.onStartup(servletContext);
+        SpringUtil.setApplicationContext(WebApplicationContextUtils.getRequiredWebApplicationContext(servletContext));
+    }
+
+    @Bean
+    public FilterRegistrationBean setFilter(){
+        FilterRegistrationBean filterBean = new FilterRegistrationBean();
+        filterBean.setFilter(new SessionFilter());
+        filterBean.setName("SessionFilter");
+        filterBean.addUrlPatterns("/pushman/*");
+        return filterBean;
+    }
+}

@@ -1,0 +1,78 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.provider.service.HuaweiPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.List;
+
+/**
+ * 待推送华为消息监听器
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-29 13:35
+ */
+public class ToPushHuaweiListener extends BaseBS implements ChannelAwareMessageListener {
+
+    HuaweiPushService huaweiPushService = SpringUtil.getBean("huaweiPushService", HuaweiPushService.class);
+    private int number = 1;
+    public ToPushHuaweiListener (int number) {
+        this.number = number;
+    }
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送华为消息监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            List<String> deviceTokens = (List<String>)msg.get("deviceTokens");
+            String title = msg.getString("title");
+            String content = msg.getString("content");
+            String msgType = msg.getString("msgType");
+            String actionType = msg.getString("actionType");
+            String paramIntent = msg.getString("paramIntent");
+            String paramUrl = msg.getString("paramUrl");
+
+            String biTag = msg.getString("biTag");
+            Object customize = msg.get("customize");
+            String appId = msg.getString("app_id");
+            String appSecret = msg.getString("app_secret");
+            String appPkg = msg.getString("app_pkg");
+            JSONObject params = new JSONObject();
+            params.put("deviceTokens", deviceTokens);
+            params.put("title", title);
+            params.put("content", content);
+            params.put("msgType", msgType);
+            params.put("actionType", actionType);
+            params.put("paramIntent", paramIntent);
+            params.put("paramUrl", paramUrl);
+            params.put("biTag", biTag);
+            params.put("customize", customize);
+            params.put("app_id", appId);
+            params.put("app_secret", appSecret);
+            params.put("app_pkg", appPkg);
+            huaweiPushService.sendHuawei(params);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

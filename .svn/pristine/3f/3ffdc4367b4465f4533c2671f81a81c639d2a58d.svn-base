@@ -1,0 +1,38 @@
+package cn.gnw.push.websocket.provider.mq;
+
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+
+/**
+ * 待发送WebSocket队列监听器
+ *
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-09-29 11:39
+ */
+public class ToSendDeviceListener implements ChannelAwareMessageListener {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private int number = 1;
+
+    public ToSendDeviceListener(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        logger.info(new StringBuffer("待发送WebSocket队列监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        try {
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+
+    }
+}

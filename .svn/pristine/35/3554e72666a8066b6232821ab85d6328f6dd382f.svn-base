@@ -1,0 +1,42 @@
+package cn.gnw.push.iosmdm.provider.fallback;
+
+import cn.gnw.push.iosmdm.provider.interfaces.PushDeviceCenterServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Component;
+
+/**
+ * 推送给设备中心服务接口降级处理
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-12-19 9:29
+ */
+@Component
+public class PushDeviceCenterServiceClientFallback implements PushDeviceCenterServiceClient {
+
+    private final JSONObject resultJson = new JSONObject();
+
+    public PushDeviceCenterServiceClientFallback(){
+        resultJson.put("status", -1);
+        resultJson.put("message", "请求失败，请重新提交。");
+    }
+
+    @Override
+    public String getDeviceIdFromDc(JSONObject rParams) {
+        return resultJson.toString();
+    }
+
+    @Override
+    public String pushDeviceCenterBind(JSONObject rParams) {
+        return resultJson.toString();
+    }
+
+    @Override
+    public String pushDeviceCenterUnBind(JSONObject rParams) {
+        return resultJson.toString();
+    }
+
+    @Override
+    public String pushDeviceCenterUpdate(JSONObject rParams) {
+        return resultJson.toString();
+    }
+}

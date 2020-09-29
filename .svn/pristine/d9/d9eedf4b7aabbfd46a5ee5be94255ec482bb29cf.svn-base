@@ -1,0 +1,81 @@
+package cn.gnw.push.websocket.provider.listener;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.Data;
+import cn.gnw.push.api.entity.websocket.DeviceStatus;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.config.WSConfig;
+import cn.gnw.push.websocket.provider.utils.PushWSUtil;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import cn.gnw.push.websocket.provider.utils.WSUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.corundumstudio.socketio.HandshakeData;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.listener.DisconnectListener;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 关闭
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-10-31 17:14
+ */
+public class WSDisconnectListener extends BaseBS implements DisconnectListener {
+
+    @Override
+    public void onDisconnect(SocketIOClient socketIOClient) {
+        HandshakeData handshakeData = socketIOClient.getHandshakeData();
+        Map<String, List<String>> map = handshakeData.getUrlParams();
+        //组装设备离线消息
+        DeviceStatus deviceStatus = new DeviceStatus();
+        Data data = new Data();
+        List<String> dataList = new ArrayList<>();
+        String deviceId = "";
+        String channel = "";
+        if (map.containsKey("device_id")) {
+            deviceId = map.get("device_id").get(0);
+            dataList.add(deviceId);
+            channel = map.containsKey("channel") ? map.get("channel").get(0) : WSConstants.WS_CHANNEL_DATA;//默认数据通道
+        } else {
+            getLogger().error("Lost Of Parameter,onDisconnect : " + map.toString());
+        }
+        data.setDeviceId(dataList);
+        deviceStatus.setCommandNo(WSConstants.COMMAND_NO_OFFLINE);
+        deviceStatus.setCommandCode(WSConstants.REPORT_DEVICE_OFFLINE);
+        deviceStatus.setVersion("1.0.0");
+        deviceStatus.setCreateTime(System.currentTimeMillis());
+        deviceStatus.setData(data);
+        JSONObject object = new JSONObject();
+        object.put("channel", channel);
+        object.put("device_id", deviceId);
+        object.put("client_id", socketIOClient.getSessionId().toString());
+        //将redis中该设备的登陆记录移除
+        boolean flag = RedisUtil.getInstance().disconnectRecord(object);
+        //将解绑关系发至状态队列 写入数据库
+
+        if (flag ) {
+            if ( channel.equals(WSConstants.WS_CHANNEL_DATA)){
+                //将设备离线状态发送设备中心
+                PushWSUtil.getInstance().sendDeviceMsg(JSON.parseObject(JSON.toJSONString(deviceStatus)));
+            }
+        } else {
+            getLogger().warn(new StringBuffer("Disconnect is no send Queue deviceId : ").append(deviceId)
+                    .append("\nflag : ").append(flag)
+                    .append("\nclientId : ").append(socketIOClient.getSessionId())
+                    .append("\nchannel : ").append(channel).toString());
+        }
+        getLogger().info(new StringBuffer("From : ").append(WSUtil.getClientIP(handshakeData))
+                .append("\nDisconnect ClientId : ").append(socketIOClient.getSessionId())
+                .append("\nParam : ").append(map.toString())
+                .toString());
+
+//        int onlienSize = SpringBeanConfig.getBean(WSConfig.class).getServer().getAllClients().size();
+//        getLogger().info("离线剩余人数 : " + onlienSize);
+    }
+}

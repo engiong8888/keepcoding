@@ -1,0 +1,42 @@
+package cn.gnw.push.websocket.provider;
+
+import cn.gnw.push.websocket.provider.config.SpringBeanConfig;
+import cn.gnw.push.websocket.provider.server.WSPushServer;
+import cn.gnw.push.websocket.provider.server.WSServer;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import javax.annotation.Resource;
+
+@EnableTransactionManagement
+@EnableAutoConfiguration
+@EnableEurekaClient
+@SpringBootApplication(exclude = {
+        DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class,
+        MongoAutoConfiguration.class, MongoDataAutoConfiguration.class
+})
+public class GnwPushWebSocketProviderApplication implements CommandLineRunner {
+
+    @Resource
+    private WSPushServer wsServer;
+
+
+    public static void main(String[] args) {
+        SpringApplication.run(GnwPushWebSocketProviderApplication.class, args);
+    }
+
+    @Override
+    public void run(String... strings) throws Exception {
+        wsServer.start();
+        WSServer server = SpringBeanConfig.getBean(WSServer.class);
+        server.initDeviceBindToRedis();
+    }
+}

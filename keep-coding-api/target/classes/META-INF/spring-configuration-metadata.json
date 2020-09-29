@@ -1,0 +1,18 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "cn.keep.coding.database.DataSourceConfig",
+      "name": "spring.datasource.druid.dev",
+      "sourceMethod": "devDataSource()",
+      "type": "javax.sql.DataSource"
+    },
+    {
+      "sourceType": "cn.keep.coding.database.DataSourceConfig",
+      "name": "spring.datasource.druid.test",
+      "sourceMethod": "testDataSource()",
+      "type": "javax.sql.DataSource"
+    }
+  ],
+  "properties": []
+}

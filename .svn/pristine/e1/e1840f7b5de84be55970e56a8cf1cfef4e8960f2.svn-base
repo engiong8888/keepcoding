@@ -1,0 +1,73 @@
+package cn.gnw.push.websocket.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.push.api.entity.websocket.Data;
+import cn.gnw.push.api.entity.websocket.DeviceStatus;
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.utils.PushWSUtil;
+import cn.gnw.push.websocket.provider.utils.RedisUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+
+import java.util.List;
+
+/**
+ * 设备中心同步在线客户端
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-22 16:44
+ * {
+ * device_id": [
+ * "bb0e8a1e927221b30de6fcbf0ef83464",
+ * "bb0e8a1e927221b30de6fcbf0ef83464",
+ * "bb0e8a1e927221b30de6fcbf0ef83464"
+ * ],
+ * update_time": "2015-12-08 00:00:00"
+ * }
+ */
+public class ToSendDeviceMonitor extends BaseBS implements ChannelAwareMessageListener {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private int number = 1;
+
+    public ToSendDeviceMonitor(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        try {
+            JSONObject object = JSON.parseObject(new String(message.getBody()));
+            logger.info(new StringBuffer("待发送WebSocket队列监听器[").append(this.number).append("]接收数据：").append(object).toString());
+            if (object.containsKey("device_id")) {
+                List<String> deviceIdList = JSON.parseArray(JSON.toJSONString(object.get("device_id")), String.class);
+                RedisUtil.getInstance().getSyncClientOnline(deviceIdList);
+                if (deviceIdList.size() > 0) {
+                    DeviceStatus status = new DeviceStatus();
+                    status.setCommandNo(WSConstants.COMMAND_NO_OFFLINE);
+                    status.setCommandCode(WSConstants.REPORT_DEVICE_OFFLINE);
+                    status.setVersion("1.0.0");
+                    status.setCreateTime(System.currentTimeMillis());
+                    Data data = new Data();
+                    data.setDeviceId(deviceIdList);
+                    status.setData(data);
+                    //将离线设备发送至设备中心
+                    PushWSUtil.getInstance().sendDeviceMsg(JSON.parseObject(JSON.toJSONString(status)));
+                }
+            } else {
+                getLogger().error(new StringBuffer("Queue ToSendDeviceMonitor No Find device_id :")
+                        .append(object).toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+}

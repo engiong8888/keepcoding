@@ -1,0 +1,200 @@
+package cn.gnw.push.api.utils;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 推送工具类(QUEUE)
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-30 11:24
+ */
+public class PushUtil {
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private PushUtil () {};
+    private static class PushUtilManageHolder {
+        private static PushUtil instance = new PushUtil();
+    }
+    public static PushUtil getInstance() {
+        return PushUtil.PushUtilManageHolder.instance;
+    }
+
+    public JSONObject toPushInQueue (String pushType, JSONObject params) {
+
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        JSONObject msg = new JSONObject();
+        String queueName = null;
+        if (Constants.PUSH_TYPE_JIGUANG.equals(pushType)) {
+            String _pushType = params.getString("push_type");
+            String title = params.getString("title");
+            String alert = params.getString("alert");
+            String platform = params.getString("platform");
+            List<String> alias = (List<String>)params.get("alias");
+            List<String> tags = (List<String>) params.get("tags");
+            List<String> registrationIds = (List<String>) params.get("registration_ids");
+            Map<String, String>  extra = (Map<String, String>)params.get("extra");
+            String jgIosEnvironment = params.getString("jg_ios_environment");
+
+            String appKey = params.getString("app_key");
+            String masterSecret = params.getString("master_secret");
+
+            msg.put("push_type", _pushType);
+            msg.put("title", title);
+            msg.put("alert", alert);
+            msg.put("platform", platform);
+            msg.put("alias", alias);
+            msg.put("tags", tags);
+            msg.put("registration_ids", registrationIds);
+            msg.put("extra", extra);
+            msg.put("app_key", appKey);
+            msg.put("master_secret", masterSecret);
+            msg.put("jg_ios_environment", jgIosEnvironment);
+            queueName = Constants.RMQ_GNW_PUSH_JIGUANG_QUEUE;
+            logger.info("极光推送消息加入队列：{} " + msg.toJSONString());
+
+        } else if (Constants.PUSH_TYPE_VIVO_SEND.equals(pushType)) {
+            String registId = params.getString("regId");
+            String alias = params.getString("alias");
+            String notifyType = params.getString("notifyType");
+            Integer timeToLive = params.getInteger("timeToLive");
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String skipType = params.getString("skipType");
+            String skipContent = params.getString("skipContent");
+            String networkType = params.getString("networkType");
+            Map<String, String> clientCustomMap = (Map<String, String>)params.get("clientCustomMap");
+            Map<String, String> extra = (Map<String, String>)params.get("extra");
+
+            String appId = params.getString("app_id");
+            String appKey = params.getString("app_key");
+            String appSecret = params.getString("app_secret");
+            msg.put("regId", registId);
+            msg.put("alias", alias);
+            msg.put("notifyType", notifyType);
+            msg.put("timeToLive", timeToLive);
+            msg.put("title", title);
+            msg.put("content", content);
+            msg.put("skipType", skipType);
+            msg.put("skipContent", skipContent);
+            msg.put("networkType", networkType);
+            msg.put("clientCustomMap", clientCustomMap);
+            msg.put("extra", extra);
+            msg.put("app_id", appId);
+            msg.put("app_key", appKey);
+            msg.put("app_secret", appSecret);
+            queueName = Constants.RMQ_GNW_PUSH_VIVO_SEND_QUEUE;
+            logger.info("vivo推送消息(单推)加入队列：{} " + msg.toJSONString());
+        } else if(Constants.PUSH_TYPE_VIVO_SEND_GROUP.equals(pushType)) {
+            Set<String> regIds = (Set<String>) params.get("regIds");
+            Set<String> alias = (Set<String>) params.get("alias");
+            String notifyType = params.getString("notifyType");
+            Integer timeToLive = params.getInteger("timeToLive");
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String skipType = params.getString("skipType");
+            String skipContent = params.getString("skipContent");
+            String networkType = params.getString("networkType");
+            Map<String, String> clientCustomMap = (Map<String, String>)params.get("clientCustomMap");
+            Map<String, String> extra = (Map<String, String>)params.get("extra");
+
+            String appId = params.getString("app_id");
+            String appKey = params.getString("app_key");
+            String appSecret = params.getString("app_secret");
+            msg.put("regIds", regIds);
+            msg.put("alias", alias);
+            msg.put("notifyType", notifyType);
+            msg.put("timeToLive", timeToLive);
+            msg.put("title", title);
+            msg.put("content", content);
+            msg.put("skipType", skipType);
+            msg.put("skipContent", skipContent);
+            msg.put("networkType", networkType);
+            msg.put("clientCustomMap", clientCustomMap);
+            msg.put("extra", extra);
+            msg.put("app_id", appId);
+            msg.put("app_key", appKey);
+            msg.put("app_secret", appSecret);
+            queueName = Constants.RMQ_GNW_PUSH_VIVO_SEND_GROUP_QUEUE;
+            logger.info("vivo推送消息（群推）加入队列：{} " + msg.toJSONString());
+        } else if (Constants.PUSH_TYPE_HUAWEI_SEND.equals(pushType)) {
+
+            List<String> deviceTokens = (List<String>)params.get("deviceTokens");
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String msgType = params.getString("msgType");
+            String actionType = params.getString("actionType");
+            String paramIntent = params.getString("paramIntent");
+            String paramUrl = params.getString("paramUrl");
+            String biTag = params.getString("biTag");
+            Object customize = params.get("customize");
+
+            String appId = params.getString("app_id");
+            String appSecret = params.getString("app_secret");
+            String appPkg = params.getString("app_pkg");
+            msg.put("deviceTokens", deviceTokens);
+            msg.put("title", title);
+            msg.put("content", content);
+            msg.put("msgType", msgType);
+            msg.put("actionType", actionType);
+            msg.put("paramIntent", paramIntent);
+            msg.put("paramUrl", paramUrl);
+            msg.put("biTag", biTag);
+            msg.put("customize", customize);
+
+            msg.put("app_id", appId);
+            msg.put("app_secret", appSecret);
+            msg.put("app_pkg", appPkg);
+            queueName = Constants.RMQ_GNW_PUSH_HUAWEI_SEND_QUEUE;
+            logger.info("华为推送消息（群推）加入队列：{} " + msg.toJSONString());
+        } else if (Constants.PUSH_TYPE_MI_SEND.equals(pushType)) {
+
+            String _pushType = params.getString("push_type");
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String description = params.getString("description");
+            String source = params.getString("source");
+            String platform = params.getString("platform");
+            List<String> alias = (List<String>)params.get("alias");
+            List<String> accounts = (List<String>) params.get("accounts");
+            List<String> topics = (List<String>) params.get("topics");
+            List<String> regIds = (List<String>) params.get("reg_ids");
+            Map<String, String>  extra = (Map<String, String>)params.get("extra");
+            String androidAppKey = params.getString("android_app_key");
+            String androidAppSecret = params.getString("android_app_secret");
+            String androidPackage = params.getString("android_package");
+            String iosAppKey = params.getString("ios_app_key");
+            String iosAppSecret = params.getString("ios_app_secret");
+
+            msg.put("push_type", _pushType);
+            msg.put("title", title);
+            msg.put("content", content);
+            msg.put("description", description);
+            msg.put("source", source);
+            msg.put("platform", platform);
+            msg.put("alias", alias);
+            msg.put("accounts", accounts);
+            msg.put("topics", topics);
+            msg.put("reg_ids", regIds);
+            msg.put("extra", extra);
+            msg.put("android_app_key", androidAppKey);
+            msg.put("android_app_secret", androidAppSecret);
+            msg.put("android_package", androidPackage);
+            msg.put("ios_app_key", iosAppKey);
+            msg.put("ios_app_secret", iosAppSecret);
+            queueName = Constants.RMQ_GNW_PUSH_MI_SEND_QUEUE;
+            logger.info("小米推送消息加入队列：{} " + msg.toJSONString());
+        }
+        rabbitTemplate.convertAndSend(queueName, msg);
+        return msg;
+    }
+}

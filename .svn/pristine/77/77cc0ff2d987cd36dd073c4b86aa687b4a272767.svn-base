@@ -1,0 +1,85 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 华为推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-11-07 11:02
+ */
+@RestController
+@RequestMapping(value = "/push/huawei")
+public class HuaweiPushController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 推送
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.huaweiSend(rParams);
+    }
+
+    /**
+     * 绑定设备
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId(@RequestBody JSONObject rParams){
+        return pushServiceClient.huaweiBindingRegId(rParams);
+    }
+
+    /**
+     * 解除绑定
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbind(@RequestBody JSONObject rParams){
+        return pushServiceClient.huaweiUnbind(rParams);
+    }
+
+    /**
+     * 消息回执
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/notify")
+    @ResponseBody
+    private String huaweiPushNotify(@RequestBody JSONObject rParams){
+        return pushServiceClient.huaweiPushNotify(rParams);
+    }
+
+    /**
+     * 更新华为redis缓存
+     * @return
+     */
+    @PostMapping("/update/huawei_config")
+    @ResponseBody
+    private String updateRedisHuaweiConfig() {
+        return pushServiceClient.updateRedisHuaweiConfig();
+    }
+
+
+    /**
+     * 获取华为推送记录
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String getPushHuaweiRecord(@RequestBody JSONObject rParams) {
+        return pushServiceClient.queryHuaweiPushRecord(rParams);
+    }
+}

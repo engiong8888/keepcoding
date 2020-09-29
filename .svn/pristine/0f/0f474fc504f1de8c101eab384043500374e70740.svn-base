@@ -1,0 +1,83 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "push_type",
+    "app_id",
+    "app_secret",
+    "app_pkg",
+    "source",
+    "enabled"
+  ],
+  "properties": {
+    "push_type": {
+      "$id": "#/properties/push_type",
+      "type": "string",
+      "title": "The Push_type Schema",
+      "default": "",
+      "examples": [
+        "pt_01"
+      ],
+      "maxLength":5,
+      "pattern": "^(.*)$"
+    },
+    "app_id": {
+      "$id": "#/properties/app_id",
+      "type": "string",
+      "title": "The App_id Schema",
+      "default": "",
+      "examples": [
+        "fd2a16b9c40217a80becf3fb"
+      ],
+      "maxLength":12,
+      "pattern": "^(.*)$"
+    },
+    "app_secret": {
+      "$id": "#/properties/app_secret",
+      "type": "string",
+      "title": "The App_secret Schema",
+      "default": "",
+      "examples": [
+        "d2004ef87dbc00285c993eb3"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "app_pkg": {
+      "$id": "#/properties/app_pkg",
+      "type": "string",
+      "title": "The App_pkg Schema",
+      "default": "",
+      "examples": [
+        "com.gnw.glsh.child"
+      ],
+      "maxLength":128,
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "enabled": {
+      "$id": "#/properties/enabled",
+      "type": "string",
+      "title": "The Enabled Schema",
+      "default": "",
+      "examples": [
+        "1"
+      ],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "mobile",
+    "content",
+    "source"
+  ],
+  "properties": {
+    "mobile": {
+      "$id": "#/properties/mobile",
+      "type": "string",
+      "title": "The Mobile Schema",
+      "default": "",
+      "examples": [
+        "13111111111"
+      ],
+      "maxLength":11,
+      "pattern": "^1\\d{10}$"
+    },
+    "content": {
+      "$id": "#/properties/content",
+      "type": "string",
+      "title": "The Content Schema",
+      "default": "",
+      "examples": [
+        "验证码0101"
+      ],
+      "maxLength":255,
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "examples": [
+        "10"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    }
+  }
+}

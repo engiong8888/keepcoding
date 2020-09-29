@@ -1,0 +1,377 @@
+spring:
+  autoconfigure.exclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration, org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+  application:
+    name: gnw-push-websocket-provider
+  cloud:
+    config:
+      enabled: false
+server:
+  port: 9590
+logging:
+  config: classpath:logback-boot.xml
+  level:
+    root: INFO
+    org.springframework.cloud.sleuth: DEBUG
+  path: /data/logs/java/${spring.application.name}/
+mybatis:
+  mapper-locations: classpath:mybatis/*.xml
+---
+spring:
+  profiles: vmware
+  rabbitmq:
+    host: 106.13.79.1
+    port: 5672
+    username: macro
+    password: 2887
+    virtual-host: /
+  redis:
+    database: 3
+    host: 106.13.79.1
+    port: 6379
+    password: 2887
+    pool:
+      max-total: -1
+      max-wait: -1
+      max-idle: -1
+      min-idle: 0
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://106.13.79.1:3306/push_center?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&useSSL=false
+  user: root
+  password: Lqh123456.
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://gnw-pub-register-server1:9000/eureka/,http://gnw-pub-register-server2:9000/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 32768
+  maxHttpContentLength: 32768
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://msdev.dev.zhixike.net/ds/device/status #获取设备信息
+---
+spring:
+  profiles: dev
+  rabbitmq:
+    host: 172.168.50.173
+    port: 5672
+    username: lwpub
+    password: lw_rabbit
+    virtual-host: /
+  redis:
+    database: 3
+    host: 172.168.50.56
+    port: 6379
+    password: shemg
+    pool:
+      max-total: -1
+      max-wait: -1
+      max-idle: -1
+      min-idle: 0
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://172.168.50.56:3306/push_center?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: pubdev
+  password: pubdev123
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://172.168.50.56:9000/eureka/,http://172.168.50.57:9000/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 32768
+  maxHttpContentLength: 32768
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://msdev.dev.zhixike.net/ds/device/status #获取设备信息
+
+---
+spring:
+  profiles: test
+  rabbitmq:
+    host: 172.168.50.84
+    port: 5672
+    username: lwpub
+    password: lw_rabbit
+    virtual-host: /
+  redis:
+    database: 3
+    host: 172.168.50.80
+    port: 6379
+    password: shemg
+    pool:
+      max-total: 32
+      max-wait: -1
+      max-idle: 32
+      min-idle: 8
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://172.168.50.56:3306/push_center_test?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: pubdev
+  password: pubdev123
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://172.168.50.89:30101/eureka/,http://172.168.50.89:30102/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 32768
+  maxHttpContentLength: 32768
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://msdev.dev.zhixike.net/ds/device/auth #获取设备信息
+
+#容器环境
+---
+spring:
+  profiles: container_dev
+  rabbitmq:
+    host: 172.168.50.173
+    port: 5672
+    username: lwpub
+    password: lw_rabbit
+    virtual-host: /
+  redis:
+    database: 3
+    host: 172.168.50.56
+    port: 6379
+    password: shemg
+    pool:
+      max-total: 8
+      max-wait: -1
+      max-idle: 8
+      min-idle: 0
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://172.168.50.56:3306/push_center?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: pubdev
+  password: pubdev123
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://gnw-pub-register-server1:9000/eureka/,http://gnw-pub-register-server2:9000/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 32768
+  maxHttpContentLength: 32768
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://msdev.dev.zhixike.net/ds/device/auth #获取设备信息
+
+---
+spring:
+  profiles: container_test
+  rabbitmq:
+    host: 172.168.50.84
+    port: 5672
+    username: lwpub
+    password: lw_rabbit
+    virtual-host: /
+  redis:
+    database: 3
+    host: 172.168.50.80
+    port: 6379
+    password: shemg
+    pool:
+      max-total: -1
+      max-wait: -1
+      max-idle: -1
+      min-idle: 8
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://172.168.50.56:3306/push_center_test?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: pubdev
+  password: pubdev123
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://gnw-pub-register-server1:9000/eureka/,http://gnw-pub-register-server2:9000/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 32768
+  maxHttpContentLength: 32768
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://mstes.dev.zhixike.net/ds/device/auth #获取设备信息
+
+#生产环境
+---
+spring:
+  profiles: container_prod
+  rabbitmq:
+    host: 172.16.247.73
+    port: 5672
+    username: lwpub
+    password: lw_rabbit
+    virtual-host: /
+  redis:
+    database: 3
+    host: 172.16.247.88
+    port: 6379
+    password: shemg
+    pool:
+      max-total: -1
+      max-wait: -1
+      max-idle: -1
+      min-idle: 8
+    timeout: 0
+c3p0:
+  jdbcUrl: jdbc:mysql://rm-bp1u9vti4gc47w718.mysql.rds.aliyuncs.com:3306/push_center?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+  user: push_center
+  password: '{cipher}AQCNyJGIabycSDyBa9JT5eHMUrnSyOMkgZNePX+znfceYLMyakz9DpGLg5F9KidxOrihD1PztCHWxaO+vZlmhOdcFQcHIXuKPCd83Ezj/GTxEWVv2NDkkA8+L2cG7Ob7A4IqYRO4OdB+H0VB1cqeGBV7YQ0XtgOLorZfoUsPLphlrvcoICHyez8LXpCrWgn8BhaEZn5s+OleErwaQNuj258g7s70Z4ACW9q0qimprPyU6cY3lcEnrPB8fdBoJ/LEOclg9EQgYAbUh4JljFSiPy3pkkARrrqOfm7eSddD4BttIQhwXD/nyAqIFgJWp5F6VgNI8N1yWcrU0ammBLRZu+CPDGIKMFshpJcU80RARFUG5mw3zZ1pCzIL/SFYvQIBFFojk+/5i8XZPl7HJWMgw16b'
+  driver-class-name: com.mysql.jdbc.Driver
+  minPoolSize: 5
+  maxPoolSize: 30
+  maxIdleTime: 60
+  acquireIncrement: 3
+  initialPoolSize: 5
+  idleConnectionTestPeriod: 60
+  acquireRetryAttempts: 30
+  acquireRetryDelay: 1000
+  validationQuery: select 'x'
+eureka:
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.cloud.client.ipAddress}:${server.port}
+    statusPageUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.info.path:/manager/login/loginIn}
+    healthCheckUrlPath: ${server.context-path:${SERVER_CONTEXTPATH:}}${management.context-path:${MANAGEMENT_CONTEXTPATH:}}${endpoints.health.path:/health}
+    lease-expiration-duration-in-seconds: 15  #续约更新时间间隔
+    lease-renewal-interval-in-seconds: 5      #续约到期时间
+  client:
+    healthcheck:
+      enabled: true
+    serviceUrl:
+      defaultZone: http://gnw-pub-register-server1:9000/eureka/,http://gnw-pub-register-server2:9000/eureka/
+ws:
+  port: 9590
+  pingInterval: 120000 #心跳间隔
+  pingTimeout: 180000  #心跳超时  WSConstants  Redis刷新心跳标识 360s
+  clientPingTimeout: 60000  #客户端超时间隔
+  upgradeTimeout: 10000 #更换ws协议超时时间
+  maxFramePayLoadLength: 65535
+  maxHttpContentLength: 65535
+  firstDataTimeout: 5000 #通道打开和第一次数据传输之间的超时
+  keyStorePath: dev.zhixike.net.jks #证书名称
+  keyStorePassword: tq10euC8 #证书密码
+  deviceInfoUrl: https://ms.gwchina.cn/ds/device/auth #获取设备信息

@@ -1,0 +1,396 @@
+package cn.gnw.push.api.utils.vivopush;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.pub.base.utils.web.WebRequestUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.entity.vivopush.VivoApiConfig;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * vivo推送工具类
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-24 15:56
+ */
+public class VivoPushUtil {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static String appId = "";
+    private static String appKey = "";
+    private static String appSecret = "";
+
+    public VivoPushUtil(String appId, String appKey) {
+        this.appId = appId;
+        this.appKey = appKey;
+    }
+
+    public VivoPushUtil(String appId, String appKey, String appSecret) {
+        this.appId = appId;
+        this.appKey = appKey;
+        this.appSecret = appSecret;
+    }
+
+    /**
+     * 鉴权，服务器获取token
+     * @return
+     */
+    public String authToken () {
+        String token = null;
+
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        StringBuffer sb = new StringBuffer();
+        sb.append(this.appId).append(this.appKey).append(timestamp).append(this.appSecret);
+        String sign = MD5Encode(sb.toString(),"UTF-8");
+        Map<Object, Object> params = new HashMap<Object, Object>();
+        params.put("appId", this.appId);
+        params.put("appKey", this.appKey);
+        params.put("timestamp", timestamp);
+        params.put("sign", sign);
+        String json = JSON.toJSONString(params);
+
+        JSONObject authTokenResult = JSON.parseObject(HttpClientUtil.executePost(VivoApiConfig.TOKEN_AUTH, json));
+       // JSONObject authTokenResult = WebRequestUtil.httpRequest(VivoApiConfig.TOKEN_AUTH, "POST", json, Constants.API_CHARSET);
+        if(authTokenResult != null){
+            try{
+                token  = authTokenResult.getString("authToken");
+                logger.info(new StringBuffer("鉴权auth_token[key]{").append("auth_token")
+                        .append("}[token]{").append(token).append("}").toString());
+            } catch (JSONException e) {
+                logger.info(new StringBuffer("获取vivo鉴权Access_Token失败：").append(authTokenResult.toJSONString()).toString());
+                logger.error(e.getMessage());
+            }
+        }
+        return token;
+    }
+
+    public String getAccessToken () {
+
+        String tokenStr = getAccessTokenFromRedis();
+        if(tokenStr == null){
+            tokenStr = authToken();
+            setAccessTokenToRedis(tokenStr);
+        }
+        return tokenStr;
+    }
+
+    /**
+     * redis获取token
+     * @return
+     */
+    private String getAccessTokenFromRedis() {
+        ShardedJedisPool shardedJedisPool = (ShardedJedisPool) SpringUtil.getBean("shardedJedisPool");
+        ShardedJedis shardedJedis = null;
+        String tokenStr = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            StringBuffer key = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(Constants.REDIS_VIVO_AUTH_TOKEN);
+            tokenStr = shardedJedis.get(key.toString());
+            logger.info(new StringBuffer("获取Vivo access_token[Redis][key]{").append(key)
+                    .append("}[token]{").append(tokenStr).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return tokenStr;
+    }
+
+    /**
+     * 设置token到redis,过期时间设置为1天
+     * @param tokenStr
+     */
+    private void setAccessTokenToRedis(String tokenStr) {
+        ShardedJedisPool shardedJedisPool = (ShardedJedisPool) SpringUtil.getBean("shardedJedisPool");
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            StringBuffer key = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(Constants.REDIS_VIVO_AUTH_TOKEN);
+            shardedJedis.set(key.toString(), tokenStr);
+            shardedJedis.expire(key.toString(), 82800); //设置有效期为23小时
+            logger.info(new StringBuffer("设置Vivo access_token[Redis][key]{").append(key)
+                    .append("}[token]{").append(tokenStr).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+    }
+
+    /**
+     * （单播）单推消息
+     * @param regId(regId,alias两者需一个不为空,都不为空时取regId)
+     * @param alias 别名
+     * @param notifyType 通知类型1：无，2响铃，3震动，4响铃加震动
+     * @param title
+     * @param content
+     * @param skipType 点击跳转类型1.打开app首页 2.打开连接，3.自定义 4.打开app内指定页面
+     * @param clientCustomMap 客户端自定义键值对
+     * @param extra 扩展参数回执信息
+     * @param authToken token
+     * @return
+     */
+    public JSONObject sendMessage (String regId, String alias, String notifyType, Integer timeToLive, String title, String content, String skipType, String skipContent, String networkType, Map<String, String> clientCustomMap, Map<String, String> extra, String authToken) {
+        int network_type = -1;
+        if("1".equals(networkType)){
+            network_type = Integer.valueOf(networkType);
+        }
+        Map<Object, Object> params = new HashMap<Object, Object>();
+        params.put("regId", regId);
+        params.put("alias", alias);
+        params.put("notifyType", notifyType);
+        params.put("timeToLive", timeToLive);
+        params.put("title", title);
+        params.put("content", content);
+        params.put("skipType", skipType);
+        params.put("skipContent", skipContent);
+        params.put("networkType", network_type);
+        params.put("requestId", getRequestId());
+        params.put("clientCustomMap", clientCustomMap);
+        params.put("extra", extra);
+        String json = JSON.toJSONString(params);
+        logger.info("vivoPush推送（单推）请求参数：{} "+JSON.toJSONString(params));
+        JSONObject sendResult = JSONObject.parseObject(HttpClientUtil.executePost(authToken, VivoApiConfig.MESSAGE_SEND, json));
+        return sendResult;
+    }
+
+    /**
+     * （广播）保存群推消息公共体接口
+     * @param title
+     * @param content
+     * @param timeToLive 单位秒，不传默认一天
+     * @param skipType
+     * @param skipContent
+     * @param networkType 网络方式 默认-1
+     * @param clientCustomMap
+     * @param extra
+     * @return
+     */
+    public JSONObject saveListPayload (String title, String content, String notifyType, Integer timeToLive, String skipType, String skipContent, String networkType, Map<String, String> clientCustomMap, Map<String, String> extra, String authToken) {
+        JSONObject saveResult = null;
+
+        int network_type = -1;
+        if("1".equals(networkType)){
+            network_type = Integer.valueOf(networkType);
+        }
+        Map<Object, Object> params = new HashMap<Object, Object>();
+        params.put("title", title);
+        params.put("content", content);
+        params.put("notifyType", notifyType);
+        params.put("timeToLive", timeToLive);
+        params.put("skipType", skipType);
+        params.put("skipContent", skipContent);
+        params.put("networkType", network_type);
+        params.put("clientCustomMap", clientCustomMap);
+        params.put("extra", extra);
+        params.put("requestId", getRequestId());
+        String json = JSON.toJSONString(params);
+        logger.info("vivoPush推送（保存群推消息公共体）请求参数：{} "+JSON.toJSONString(params));
+        saveResult = JSONObject.parseObject(HttpClientUtil.executePost(authToken, VivoApiConfig.MESSAGE_SAVE_LIST_PAYLOAD, json));
+        return saveResult;
+    }
+
+    /**
+     * 批量推送用户接口（regids 或者aliases 必须大于等于2，小于等于1000）
+     * @param regIds
+     * @param aliases
+     * @param taskId
+     * @return
+     */
+    public JSONObject pushToList (Set<String> regIds, Set<String> aliases, String taskId, String authToken) {
+        JSONObject sendResult = null;
+
+        Map<Object, Object> params = new HashMap<Object, Object>();
+        params.put("regIds", regIds);
+        params.put("aliases", aliases);
+        params.put("taskId", taskId);
+        params.put("requestId", getRequestId());
+        String json = JSON.toJSONString(params);
+        logger.info("vivoPush推送（批量推送用户接口）请求参数：{} "+JSON.toJSONString(params));
+        sendResult = JSONObject.parseObject(HttpClientUtil.executePost(authToken, VivoApiConfig.MESSAGE_PUSH_TO_LIST, json));
+        return sendResult;
+    }
+
+    /**
+     * 全量发送接口，向所有设备
+     * @param notifyType
+     * @param title
+     * @param content
+     * @param timeToLive
+     * @param skipType
+     * @param skipContent
+     * @param networkType
+     * @param clientCustomMap
+     * @param authToken
+     * @return
+     */
+    public JSONObject sendAll (String notifyType, String title, String content, Integer timeToLive, String skipType, String skipContent, String networkType, Map<String, String> clientCustomMap, String authToken) {
+        JSONObject sendResult = null;
+
+        int network_type = -1;
+        if("1".equals(networkType)){
+            network_type = Integer.valueOf(networkType);
+        }
+        Map<Object, Object> params = new HashMap<Object, Object>();
+        params.put("title", title);
+        params.put("content", content);
+        params.put("notifyType", notifyType);
+        params.put("timeToLive", timeToLive);
+        params.put("skipType", skipType);
+        params.put("skipContent", skipContent);
+        params.put("networkType", network_type);
+        params.put("clientCustomMap", clientCustomMap);
+        params.put("requestId", getRequestId());
+        String json = JSON.toJSONString(params);
+        logger.info("vivoPush推送（全量推送用户接口）请求参数：{} "+JSON.toJSONString(params));
+        sendResult = JSONObject.parseObject(HttpClientUtil.executePost(authToken, VivoApiConfig.MESSAGE_ALL, json));
+        return sendResult;
+
+    }
+
+    /**
+     * 获取消息推送的统计值接口，taskIds最多100个
+     * @param taskIds
+     * @param authToken
+     * @return
+     */
+    public JSONObject getStatistics (String taskIds, String authToken) {
+        JSONObject staticResult = null;
+        String url = VivoApiConfig.REPORT_STATISTICS.replace("TASK_IDS",taskIds);
+        staticResult = JSONObject.parseObject(HttpClientUtil.executeGet(authToken, url));
+        return staticResult;
+    }
+
+    /**
+     * MD5加密
+     * @param origin
+     * @param charset
+     * @return
+     */
+    public String MD5Encode(String origin, String charset) {
+        String resultString = null;
+        try {
+
+            resultString = new String(origin);
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            if (charset == null || "".equals(charset)) {
+                resultString = byteToStr(md.digest(resultString.getBytes()));
+            } else {
+                resultString = byteToStr(md.digest(resultString.getBytes(charset)));
+                logger.info("MD5Encode:{} "+resultString);
+            }
+        } catch (Exception exception) {
+
+        }
+        return resultString;
+    }
+
+    /**
+     * 生成随机数
+     * @return
+     */
+    public String getRequestId () {
+        String requestId= StringUtil.getUUIDString();
+        return requestId;
+    }
+
+
+//    public static void main (String[] args) {
+//        String appId = "10282";
+//        String appKey = "6fb25c25-4aa5-458c-a8ac-4ac03de1b100";
+//        String appSecret = "ef3c3aa4-8814-4f2b-8c7f-06253a99e38a";
+//        VivoPushUtil vutil = new VivoPushUtil(appId, appKey, appSecret);
+//
+//        String timestamp = String.valueOf(System.currentTimeMillis());
+//       String token =  vutil.authToken();
+//       System.out.println(token);
+//
+//       String token1 = "83ce3d8f-d705-4fc8-963c-aca0f9cf2a98";
+//       /* String taskIds = "123,456";
+//        String token = "5dc74cf8-bd80-4013-b3da-bd85a1745a43";
+//        vutil.getStatistics(taskIds, token);*/
+//    }
+
+   /* public static void main (String[] args) {
+        String appId1 = "10282";
+        String appKey1 = "6fb25c25-4aa5-458c-a8ac-4ac03de1b100";
+        String appSecret1 = "ef3c3aa4-8814-4f2b-8c7f-06253a99e38a";
+        VivoPushUtil vutil = new VivoPushUtil(appId1, appKey1, appSecret1);
+
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        StringBuffer sb = new StringBuffer();
+        sb.append(appId).append(appKey).append(timestamp).append(appSecret);
+        String sign = vutil.MD5Encode(sb.toString(),"UTF-8");
+        System.out.println("签名》》》》》"+sign);
+
+        String regId ="15511560745091028226281";
+        String alias ="test001";
+        String notifyType = "4";
+        String title = "vivodev（顺序7）推送标题";
+        String content= "（顺序7）推送内容";
+        String skipType= "1";
+        String requestId= StringUtil.getUUIDString();
+        //String authToken = vutil.getAccessToken();
+
+        String authToken = vutil.authToken();
+
+
+        JSONObject sResult = vutil.sendMessage(regId, null, notifyType, null, title, content, skipType, null, null, null, null, authToken);
+//
+//        JSONObject result = vutil.sendMessage(regId, alias, notifyType, title, content, skipType, null,null, authToken);
+//        System.out.println(result.toJSONString());
+
+    }*/
+
+    /**
+     * 将字节数组转换为十六进制字符串
+     *
+     * @param byteArray
+     * @return
+     */
+    private String byteToStr(byte[] byteArray) {
+        String strDigest = "";
+        for (int i = 0; i < byteArray.length; i++) {
+            strDigest += byteToHexStr(byteArray[i]);
+        }
+        return strDigest;
+    }
+
+    /**
+     * 将字节转换为十六进制字符串
+     *
+     * @param mByte
+     * @return
+     */
+    private String byteToHexStr(byte mByte) {
+        char[] Digit = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+        char[] tempArr = new char[2];
+        tempArr[0] = Digit[(mByte >>> 4) & 0X0F];
+        tempArr[1] = Digit[mByte & 0X0F];
+
+        String s = new String(tempArr);
+//        System.out.println();
+        return  s.toLowerCase();
+    }
+}

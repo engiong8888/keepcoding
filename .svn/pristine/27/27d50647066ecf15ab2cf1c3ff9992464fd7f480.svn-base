@@ -1,0 +1,61 @@
+package cn.gnw.push.api.entity.iosmdm;
+
+/**
+ * 推送配置
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-12 16:22
+ */
+public class IosMdmConfig {
+
+    private String configId;
+
+    private String source;
+
+    private String mobileConfig;
+
+    private String enabled;
+
+    private String remark;
+
+    public String getConfigId() {
+        return configId;
+    }
+
+    public void setConfigId(String configId) {
+        this.configId = configId;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getMobileConfig() {
+        return mobileConfig;
+    }
+
+    public void setMobileConfig(String mobileConfig) {
+        this.mobileConfig = mobileConfig;
+    }
+
+    public String getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(String enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+}

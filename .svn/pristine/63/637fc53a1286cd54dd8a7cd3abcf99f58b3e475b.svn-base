@@ -1,0 +1,74 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * websocket推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-12-14 11:09
+ */
+@RestController
+@RequestMapping(value = "/push/websocket")
+public class WebsocketPushController extends BaseBS {
+    /**
+     * 获取websocket推送记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushSmsRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            try {
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+
+                if(!"-1".equals(limit)) {
+                    qParams.put("pos", rParams.getInteger("pos"));
+                    qParams.put("limit", Integer.valueOf(limit));
+                }
+//                qParams.put("source", rParams.getString("source"));
+                qParams.put("client_ip", rParams.getString("client_ip"));
+                qParams.put("client_id", rParams.getString("client_id"));
+                qParams.put("content", rParams.getString("content"));
+                getLogger().info(new StringBuffer("获取websocket推送记录，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Integer dataCount = simpleMybatisDao.selectOne("push.websocket.queryPushWebsocketRecordCount", qParams, Integer.class);
+                List<Map> smsRecordList = simpleMybatisDao.selectList("push.websocket.queryPushWebsocketRecord", qParams, Map.class);
+                if (smsRecordList == null) {
+                    result.put("status",-1);
+                    result.put("message","暂无获取websocket推送记录！");
+                } else {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    result.put("data", smsRecordList);
+                    result.put("total", dataCount);
+                    result.put("count", smsRecordList.size());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取websocket推送记录：{}", e.getMessage());
+            }
+        }
+        getLogger().info(new StringBuffer("获取websocket推送记录，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+}

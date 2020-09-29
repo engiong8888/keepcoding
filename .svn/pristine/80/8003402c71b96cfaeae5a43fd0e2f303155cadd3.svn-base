@@ -1,0 +1,23 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<!-- 清除浏览器缓存，每次都重新加载静态文件，开发调试用、上线请注释掉 -->
+<meta http-equiv="pragma" content="no-cache" />
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<!-- 清除浏览器缓存 -->
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noarchive">
+
+
+<link rel="shortcut icon" th:href="@{/images/favicon.ico}">
+<link rel="stylesheet" th:href="@{/lib/bootstrap/css/bootstrap.min.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/lib/bootstrap-table/css/bootstrap-table.min.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/lib/bootstrap/css/font-awesome.min.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/lib/validator/validator.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/css/home.css}">
+
+
+</html>

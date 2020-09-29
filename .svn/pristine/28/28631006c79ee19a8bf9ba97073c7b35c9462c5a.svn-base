@@ -1,0 +1,84 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 极光推送
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-11-12 15:37
+ */
+@RestController
+@RequestMapping(value = "/push/jg")
+public class JiguangPushController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 推送
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.sendJg(rParams);
+    }
+
+    /**
+     * 获取送到统计信息
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/receive/report")
+    @ResponseBody
+    private String getReportReceiveds(@RequestBody JSONObject rParams){
+        return pushServiceClient.getReportReceiveds(rParams);
+    }
+
+    /**
+     * 绑定设备
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId(@RequestBody JSONObject rParams){
+        return pushServiceClient.jgBindingRegId(rParams);
+    }
+
+    /**
+     * 解除绑定
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbind(@RequestBody JSONObject rParams){
+        return pushServiceClient.jgUnbind(rParams);
+    }
+
+    /**
+     * 更新华为redis缓存
+     * @return
+     */
+    @PostMapping("/update/jg_config")
+    @ResponseBody
+    private String updateRedisJgConfig() {
+        return pushServiceClient.updateRedisJgConfig();
+    }
+
+    /**
+     * 获取极光推送记录
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    private String getPushJgRecord(@RequestBody JSONObject rParams) {
+        return pushServiceClient.queryJgPushRecord(rParams);
+    }
+}

@@ -1,0 +1,84 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "push_type",
+    "smtp_host",
+    "from_mail",
+    "from_mail_pwd",
+    "source",
+    "enabled"
+  ],
+  "properties": {
+    "push_type": {
+      "$id": "#/properties/push_type",
+      "type": "string",
+      "title": "The Push_type Schema",
+      "default": "",
+      "examples": [
+        "pt_01"
+      ],
+      "maxLength":5,
+      "pattern": "^(.*)$"
+    },
+    "smtp_host": {
+      "$id": "#/properties/smtp_host",
+      "type": "string",
+      "title": "The Smtp_host Schema",
+      "default": "",
+      "examples": [
+        "smtp.exmail.qq.com"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "from_mail": {
+      "$id": "#/properties/from_mail",
+      "type": "string",
+      "title": "The From_mail Schema",
+      "default": "",
+      "examples": [
+        "gnw@txtws.com"
+      ],
+      "maxLength":32,
+      "format": "email",
+      "pattern": "^(.*)$"
+    },
+    "from_mail_pwd": {
+      "$id": "#/properties/from_mail_pwd",
+      "type": "string",
+      "title": "The From_mail_pwd Schema",
+      "default": "",
+      "examples": [
+        "123456"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "enabled": {
+      "$id": "#/properties/enabled",
+      "type": "string",
+      "title": "The Enabled Schema",
+      "default": "",
+      "examples": [
+        "1"
+      ],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    }
+  }
+}

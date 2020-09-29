@@ -1,0 +1,152 @@
+package java.cn.gnw.push.manager.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.HashUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.ModelAndView;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 系统模块
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-08-24 13:36
+ */
+@Controller
+@RequestMapping(value = "/pushman/system")
+public class SystemController extends BaseBS {
+
+    /**
+     * 登录页面
+     * @param request
+     * @param response
+     * @param model
+     * @return
+     */
+    @GetMapping("/login")
+    public String login(HttpServletRequest request, HttpServletResponse response, ModelMap model) {
+        return "modules/system/login";
+    }
+
+    /**
+     * 登录超时页面
+     * @param request
+     * @param response
+     * @param model
+     * @return
+     */
+    @GetMapping("/nosession")
+    public String nosession(HttpServletRequest request, HttpServletResponse response, ModelMap model) {
+        return "comm/nosession";
+    }
+
+    /**
+     * 登录检查
+     * @param request
+     * @param response
+     * @param model
+     * @return
+     */
+    @PostMapping("/login/check")
+    @ResponseBody
+    public JSONObject check(HttpServletRequest request, HttpServletResponse response, Model model) {
+        String username = getParams(request, "username", null);
+        String password = getParams(request, "password", null);
+        JSONObject result = new JSONObject();
+        if(!StringUtil.isBlank(username) && !StringUtil.isBlank(password)) {
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            Map<String, String> qParams = new HashMap<String, String>();
+            qParams.put("user_name", username);
+            Map<String, String> userInfo = simpleMybatisDao.selectOne("system.querySystemUser", qParams, Map.class);
+            if(userInfo == null) {
+                result.put("status", -1);
+                result.put("message", "该用户不存在！");
+            } else {
+                String salt = userInfo.get("salt");
+                String algorithm = "MD5";
+                String sPassword = HashUtil.genSaltStr(password, salt, algorithm);
+                String tPassword = userInfo.get("password");
+                if(tPassword.equals(sPassword)) {
+                    result.put("status", 0);
+                    result.put("message", "ok");
+                    buildSession(request, userInfo);
+                } else {
+                    result.put("status", -2);
+                    result.put("message", "用户名或密码错误！");
+                }
+            }
+        } else {
+            result.put("status", -4);
+            result.put("message", "用户名或密码不能为空！");
+        }
+        return result;
+    }
+
+    /**
+     * 注销
+     * @param request
+     * @param response
+     * @param model
+     * @return
+     */
+    @PostMapping("/logout")
+    @ResponseBody
+    public JSONObject logout(HttpServletRequest request, HttpServletResponse response, Model model) {
+        removeSession(request);
+        JSONObject result = new JSONObject();
+        result.put("status", 0);
+        result.put("message", "已成功退出！");
+        return result;
+    }
+
+    /**
+     * 首页
+     * @param request
+     * @param response
+     * @param model
+     * @return
+     */
+    @GetMapping("/index")
+    public ModelAndView index(HttpServletRequest request, HttpServletResponse response, Model model) {
+        return new ModelAndView("comm/index");
+    }
+
+    /**
+     * 建立Session
+     * @param request
+     * @param user
+     */
+    private void buildSession(HttpServletRequest request, Map<String, String> user) {
+        HttpSession session = request.getSession(true);
+        if(user != null) {
+            session.setAttribute(Constants.SESSION_LOGON_USER, user);
+        }
+    }
+
+    /**
+     * 移除Session
+     * @param request
+     */
+    private void removeSession(HttpServletRequest request) {
+        HttpSession session = request.getSession();
+        if (session.getAttribute(Constants.SESSION_LOGON_USER) != null) {
+            session.removeAttribute(Constants.SESSION_LOGON_USER);
+        }
+    }
+}

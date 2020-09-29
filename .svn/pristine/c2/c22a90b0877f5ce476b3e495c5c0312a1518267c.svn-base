@@ -1,0 +1,33 @@
+package cn.gnw.push.api.utils;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.io.IOException;
+import java.util.Properties;
+
+/**
+ * MDM配置类
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-10-08 17:58
+ */
+@Configuration
+public class ConfigUtils {
+
+    @Bean
+    public static Properties mdmProperties() throws IOException {
+        Properties prop = new Properties();
+        prop.put("APNS_P12MDM", "/MDMPush.p12");
+        prop.put("APNS_MDMPASS","123456");
+
+        prop.put("APNS_CRT", "/mbaike.crt");
+        prop.put("APNS_KEY", "/mbaikenopass.key");
+        prop.put("APNS_PEM", "/ca-bundle.pem");
+
+        prop.put("BASE_URL","http://mdm.mbaike.net");
+        prop.put("DOWN_MOBILECONFIG","/device/down.do?deviceId\\={0}");
+        return prop;
+    }
+}

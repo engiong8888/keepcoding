@@ -1,0 +1,464 @@
+package cn.gnw.push.api.utils.mipush;
+
+import com.alibaba.fastjson.JSONObject;
+import com.xiaomi.xmpush.server.*;
+import com.xiaomi.xmpush.server.Message;
+import com.xiaomi.xmpush.server.Result;
+import com.xiaomi.xmpush.server.Sender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 小米推送
+ *
+ * @author: chengzd
+ * @mail
+ * @date: 2019-06-28 15:53
+ */
+public class MiPushUtil {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static String adPkgName = "";
+    private static String adAppSecret = "";
+    private static String iosAppSecret = "";
+    private static String useSandbox = "0";
+    private static int sandRetries = 0;
+
+    public MiPushUtil () {
+
+    }
+
+    public MiPushUtil (String adPkgName, String adAppSecret, String iosAppSecret, String useSandbox, int sandRetries) {
+        this.adPkgName = adPkgName;
+        this.adAppSecret = adAppSecret;
+        this.iosAppSecret = iosAppSecret;
+        this.useSandbox = useSandbox;
+        this.sandRetries = sandRetries;
+    }
+
+    private static String ANDROID_PACKAGE_NAME = "com.test.xiaomi.push"; //包
+
+    private static String ANDROID_APP_SECRET_KEY = "5161803783855"; //安卓appKey
+
+    private static String ANDROID_APP_SECRET = "HCXeUvI68PmPhVeCwJYUQw==";  //安卓appSecret
+
+    private static String IOS_APP_SECRET = "***";  //IOS appSecret
+
+    private static String SANDBOX = "1";    //0：测试环境 1：正式环境
+
+//    private final static int SEND_RETRIES = 0;   //重试次数，0代表不重试
+
+    public final static String TYPE_IOS     = "02";           //IOS推送
+    public final static String TYPE_ANDROID = "03";           //安卓环境
+
+    private final static int DEFAULT_ALL        = -1;  //（系统默认值）：以上三种效果都有
+    private final static int DEFAULT_NULL       = 0;   // 以上三种效果都无，即静默推送
+    private final static int DEFAULT_SOUND      = 1;   // 使用默认提示音提
+    private final static int DEFAULT_VIBRATE    = 2;   // 使用默认震动提示
+    private final static int DEFAULT_LIGHTS     = 4;   // 使用默认led灯光提示
+    private final static int NOTIFY_TYPE        = DEFAULT_ALL;
+
+
+
+    /**
+     * 调用小米推送环境切换
+     */
+    public static void reStartPush(String platform) {
+        int sandbox = Integer.valueOf(useSandbox);
+        if (sandbox == 0) {
+            //测试环境
+            //测试环境只提供对IOS支持，不支持Android
+            Constants.useSandbox();
+            if (TYPE_ANDROID.equals(platform)) {
+                Constants.useOfficial();
+            }
+        } else {
+            //正式环境
+            Constants.useOfficial();
+        }
+    }
+
+    /**
+     * 根据regid发送一条短信(单发)
+     *
+     * @param title
+     * @param content
+     * @param regId
+     * @param platform
+     * @param through 通知类型（0：通知,1：透传）
+     * @throws Exception
+     */
+    public JSONObject sendMessage(String title, String content, String description, String regId, String platform, int through, Map<String,String> extras)  {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Message message = buildMessage(title, content, description, platform, through, extras);
+            Result result = sender.send(message, regId, sandRetries); //根据regID，发送消息到指定设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToRegid APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 根据regid发送一条短信(q群发)
+     *
+     * @param title
+     * @param content
+     * @param regId
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToRegids(String title, String content, String description, List<String> regId, String platform, int through, Map<String,String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Message message = buildMessage(title, content, description, platform, through, extras);
+            Result result = sender.send(message, regId, sandRetries); //根据regIDs，发送消息到指定设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToRegids APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+
+    /**
+     * 根据alias发送一条短信(单发)
+     *
+     * @param title
+     * @param content
+     * @param alias
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToAlias(String title, String content, String description, String alias, String platform, int through, Map<String,String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Result result = sender.sendToAlias(buildMessage(title, content, description, platform, through, extras), alias, sandRetries); //根据alias，发送消息到指定设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToAlias APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 根据alias发送一条短信(多发)
+     *
+     * @param title
+     * @param content
+     * @param alias
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToAlias(String title, String content, String description, List<String> alias, String platform, int through, Map<String, String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Result result = sender.sendToAlias(buildMessage(title, content, description, platform, through, extras), alias, sandRetries); //根据alias，发送消息到指定设备列表上，不重试。
+
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToAlias APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+
+    /**
+     * 根据account发送一条短信(单发)
+     * 一个账号account可以绑定多个设备(上限20个), 可以认为是小型的topic
+     *
+     * @param title
+     * @param content
+     * @param userAccount
+     * @param platform
+     * @throws Exception
+     */
+    private JSONObject sendMessageToAccount(String title, String content, String description, String userAccount, String platform, int through, Map<String,String> extras) throws Exception {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Result result = sender.sendToUserAccount(buildMessage(title, content, description, platform, through, extras), userAccount, sandRetries); //根据accountList, 发送消息到指定设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToAccount APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 根据account发送一条短信(群发)
+     * 一个账号account可以绑定多个设备(上限20个), 可以认为是小型的topic
+     *
+     * @param title
+     * @param content
+     * @param userAccount
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToAccounts(String title, String content, String description, List<String> userAccount, String platform, int through, Map<String,String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Result result = sender.sendToUserAccount(buildMessage(title, content, description, platform, through, extras), userAccount, sandRetries); //根据accountList, 发送消息到指定设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToAccounts APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 发送广播（单个topic）
+     * 根据topic，发送消息到指定一组设备上
+     *
+     * @param title
+     * @param content
+     * @param topic
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToTopic(String title, String content, String description, String topic, String platform, int through, Map<String,String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+
+            Result result = sender.broadcast(buildMessage(title, content, description, platform, through, extras), topic, sandRetries);//根据topic，发送消息到指定一组设备上，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToTopic APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 发送广播(多个topic)
+     * 根据topics，发送消息到指定多组设备上,并集运算
+     *
+     * @param title
+     * @param content
+     * @param topics
+     * @param platform
+     * @throws Exception
+     */
+    public JSONObject sendMessageToTopics(String title, String content, String description, List<String> topics, String platform, int through, Map<String,String> extras) {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+
+            // 根据topicList做并集运算, 发送消息到指定一组设备上
+            Result result = sender.multiTopicBroadcast(buildMessage(title, content, description, platform, through, extras), topics, Sender.BROADCAST_TOPIC_OP.UNION, sandRetries);
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToTopics APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 发送广播(慎用，会被禁)
+     * 全设备推送
+     *
+     * @param title
+     * @param content
+     * @param platform
+     * @throws Exception
+     */
+    private JSONObject sendBroadcast(String title, String content, String description, String platform, int through, Map<String,String> extras) throws Exception {
+        JSONObject jResult = new JSONObject();
+        try{
+            reStartPush(platform);
+            Sender sender = null;
+            if (TYPE_ANDROID.equals(platform)) {
+                sender = new Sender(adAppSecret); //需要根据appSecert来发送
+            } else if (TYPE_IOS.equals(platform)) {
+                sender = new Sender(iosAppSecret); //需要根据appSecert来发送
+            }
+            Result result = sender.broadcastAll(buildMessage(title, content, description, platform, through, extras), sandRetries);//全设备发送消息，不重试。
+            jResult = initResult(result);
+        } catch(Exception e){
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("sendMessageToAlias APIConnectionException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 构建发送信息
+     *
+     * @param title
+     * @param content
+     * @param platform
+     * @return
+     */
+    private Message buildMessage(String title, String content, String description,
+                                 String platform, int through, Map<String,String> extras) {
+        Message message = null;
+        if (TYPE_ANDROID.equals(platform)) {
+            message = buildMessage2Android(title, content, description, through, extras);
+        } else if (TYPE_IOS.equals(platform)) {
+            message = buildMessage2IOS(title, description, extras);
+        }
+        return message;
+    }
+
+    /**
+     * 构建android推送信息
+     *
+     * @param title
+     * @param content
+     * @param through 0：通知栏 1：透传
+     * @return
+     */
+    private Message buildMessage2Android(String title, String content, String description, int through, Map<String,String> extras) {
+        Message.Builder  builder = new Message.Builder()
+                .title(title)
+                .description(description).payload(content)
+                .restrictedPackageName(adPkgName)//设置包名
+                .passThrough(through)  //消息使用透传方式
+                .notifyType(NOTIFY_TYPE) // 使用默认提示音提示
+                .enableFlowControl(true);//控制消息是否需要进行平缓发送
+        if(extras != null && extras.size() > 0){
+            for(Map.Entry<String, String> entry : extras.entrySet()){
+                builder.extra(entry.getKey(),entry.getValue());
+            }
+        }
+        Message message = builder.build();
+        return message;
+    }
+
+    /**
+     * 构建ios推送信息
+     *
+     * @param description
+     * @return
+     */
+    private Message buildMessage2IOS(String title, String description, Map<String,String> extras){
+        Message.IOSBuilder builderIOS = new Message.IOSBuilder()
+                .title(title)
+                .description(description)
+                .badge(1); // 数字角标
+
+        if(extras != null && extras.size() > 0){
+            for(Map.Entry<String, String> entry : extras.entrySet()){
+                builderIOS.extra(entry.getKey(),entry.getValue());
+            }
+        }
+        Message message = builderIOS.build();
+        return message;
+    }
+
+    /**
+     * 公用封装返回
+     * @param result
+     * @return
+     */
+    public JSONObject initResult(Result result){
+        JSONObject jResult = new JSONObject();
+        JSONObject sendResult = new JSONObject();
+        sendResult.put("error_code", result.getErrorCode());
+        sendResult.put("message_id", result.getMessageId());
+        sendResult.put("reason", result.getReason());
+        if (result.getErrorCode().getValue() == 0) {
+            jResult.put("status", 0);
+        } else {
+            jResult.put("status", -1);
+        }
+        jResult.put("msg_id", result.getMessageId());
+        jResult.put("message", sendResult);
+        return jResult;
+    }
+
+
+    /*****************************************************/
+
+//    public static void main (String args[]) throws Exception {
+//        MiPushUtil miUtil = new MiPushUtil();
+//        String title = "账号tongzhi";
+//        String content = "账号neirong";
+//        String description = "账号tongzhi描述";
+//        String  alias = "test1";
+//        String  account = "3";
+////        String regid = "BtmKKU7DDoKam5h9Efa8MX2hQBqhQ6nZryGECc7D7yQrwtHoeouyqQ7aO8nQnwcr";
+////        String regid = "h/2mIQuAeoqz1Za7AwLuHVUgaXMdA3pcNUim5wZI22kK6eoiXtDrnE7QISYUa0tK";
+//        String platform = "03"; //安卓
+//        int through = 0;    //0通知
+////        JSONObject result = miUtil.sendMessage(title, content, description, regid, platform, through, null);
+////        JSONObject result = miUtil.sendMessageToAlias(title, content, description, alias, platform, through, null);
+//        JSONObject result = miUtil.sendMessageToAccount(title, content, description, account, platform, through, null);
+//        System.out.println(result);
+//    }
+}

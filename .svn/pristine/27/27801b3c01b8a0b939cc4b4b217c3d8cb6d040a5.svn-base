@@ -1,0 +1,83 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "push_type",
+    "sms_tid",
+    "sms_pwd",
+    "sms_platform",
+    "sms_source",
+    "enabled"
+  ],
+  "properties": {
+    "push_type": {
+      "$id": "#/properties/push_type",
+      "type": "string",
+      "title": "The Push_type Schema",
+      "default": "",
+      "examples": [
+        "pt_01"
+      ],
+      "maxLength":5,
+      "pattern": "^(.*)$"
+    },
+    "sms_tid": {
+      "$id": "#/properties/sms_tid",
+      "type": "string",
+      "title": "The Sms_tid Schema",
+      "default": "",
+      "examples": [
+        "1111"
+      ],
+      "maxLength":4,
+      "pattern": "^(.*)$"
+    },
+    "sms_pwd": {
+      "$id": "#/properties/sms_pwd",
+      "type": "string",
+      "title": "The Sms_pwd Schema",
+      "default": "",
+      "examples": [
+        "123456"
+      ],
+      "maxLength":32,
+      "pattern": "^(.*)$"
+    },
+    "sms_platform": {
+      "$id": "#/properties/sms_platform",
+      "type": "string",
+      "title": "The Sms_platform Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "sms_source": {
+      "$id": "#/properties/sms_source",
+      "type": "string",
+      "title": "The Sms_source Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "enabled": {
+      "$id": "#/properties/enabled",
+      "type": "string",
+      "title": "The Enabled Schema",
+      "default": "",
+      "examples": [
+        "1"
+      ],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    }
+  }
+}

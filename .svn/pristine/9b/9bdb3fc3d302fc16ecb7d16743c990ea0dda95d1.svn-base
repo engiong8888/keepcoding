@@ -1,0 +1,31 @@
+package cn.gnw.push.iosmdm.provider.interfaces;
+
+import cn.gnw.push.iosmdm.provider.fallback.PushDeviceCenterServiceClientFallback;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+/**
+ * 推送到设备中心的接口
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-12-19 9:25
+ */
+@FeignClient(value = "gnw-device-consumer", fallback = PushDeviceCenterServiceClientFallback.class)
+public interface PushDeviceCenterServiceClient {
+
+    @PostMapping("/device/device_id")
+    public String getDeviceIdFromDc(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/push/bind")
+    public String pushDeviceCenterBind(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/push/unbind")
+    public String pushDeviceCenterUnBind(@RequestBody JSONObject rParams);
+
+    @PostMapping("/device/info/update")
+    public String pushDeviceCenterUpdate(@RequestBody JSONObject rParams);
+
+}

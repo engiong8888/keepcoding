@@ -1,0 +1,37 @@
+package cn.gnw.push.iosmdm.provider;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
+import org.springframework.boot.web.servlet.ServletContextInitializer;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.cloud.netflix.feign.EnableFeignClients;
+import org.springframework.cloud.netflix.hystrix.EnableHystrix;
+import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
+import javax.servlet.ServletContext;
+
+@SpringBootApplication(exclude={
+        RedisAutoConfiguration.class, RedisRepositoriesAutoConfiguration.class,
+        MongoAutoConfiguration.class, MongoDataAutoConfiguration.class
+})
+@EnableEurekaClient
+@EnableHystrixDashboard
+@EnableHystrix
+@EnableFeignClients
+public class GnwPushIosMdmProviderApplication implements ServletContextInitializer {
+
+    public static void main(String[] args) {
+        SpringApplication.run(GnwPushIosMdmProviderApplication.class, args);
+    }
+
+    @Override
+    public void onStartup(ServletContext servletContext) {
+        SpringUtil.setApplicationContext(WebApplicationContextUtils.getRequiredWebApplicationContext(servletContext));
+    }
+}

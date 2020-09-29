@@ -1,0 +1,83 @@
+package cn.gnw.push.websocket.provider.utils;
+
+import cn.gnw.pub.base.utils.StringUtil;
+import com.corundumstudio.socketio.HandshakeData;
+import io.netty.handler.codec.http.HttpHeaders;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+/**
+ * WebSocket 服务 工具类
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-12-04 15:13
+ */
+public class WSUtil {
+    private static String host ="";
+    /**
+     * 获取客户端IP
+     * @param handshakeData
+     * @return
+     */
+    public static String getClientIP(HandshakeData handshakeData) {
+        HttpHeaders headers = handshakeData.getHttpHeaders();
+        String ip = headers.getAsString("X-Forwarded-For");
+        if (!StringUtil.isBlank(ip) && !"unKnown".equalsIgnoreCase(ip)) {
+            int index = ip.indexOf(",");
+            if (index != -1) {
+                return ip.substring(0, index);
+            } else {
+                return ip;
+            }
+        }
+        ip = headers.getAsString("X-Real-IP");
+        if (!StringUtil.isBlank(ip) && !"unKnown".equalsIgnoreCase(ip)) {
+            return ip;
+        }
+        return handshakeData.getAddress().toString();
+    }
+
+    /**
+     * 获取服务端IP
+     * @return
+     */
+    public static String getServerIP() {
+        try {
+            if (host.isEmpty()){
+                host = InetAddress.getLocalHost().getHostAddress();
+            }
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return host;
+    }
+
+    /**
+     * 16进制转字符串
+     * @param s
+     * @return
+     */
+    public static String hexStringToString(String s) {
+        if (s == null || s.equals("")) {
+            return null;
+        }
+        s = s.replace(" ", "");
+        byte[] baKeyword = new byte[s.length() / 2];
+        for (int i = 0; i < baKeyword.length; i++) {
+            try {
+                baKeyword[i] = (byte) (0xff & Integer.parseInt(s.substring(i * 2, i * 2 + 2), 16));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            s = new String(baKeyword, "UTF-8");
+            new String();
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        return s;
+    }
+}

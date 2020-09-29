@@ -1,0 +1,374 @@
+/**
+ * 百度地图工具类
+ * @author shemg
+ * @date 2015/09/07
+ */
+function BaiduMapUtil() {
+	
+	// 构造函数方式定义对象的所有非函数属性
+	this.map;
+	this.initLongitude = "104.422054";	// 初始化经度
+	this.initLatitude = "36.132534";	// 初始化纬度
+	this.initZoom = "5";				// 初始化缩放比例
+	
+	// 原型方式定义对象的函数属性（方法）
+	
+	/**
+	 * 初始化地图,设置中心点坐标和地图级别
+	 * @param mapObj 地图对象 格式{"id":"","lng":"","lat":""}
+	 * id:地图ID、lng:初始化经度、lat:初始化纬度
+	 */
+	if(BaiduMapUtil.prototype.initMap == undefined) {
+		BaiduMapUtil.prototype.initMap = function(mapObj) {
+			var tempMap = new BMap.Map(mapObj.id);
+			var mapCenterPoint = new BMap.Point(mapObj.lng, mapObj.lat);
+			var mapCenterZoom = mapObj.zoom;
+			tempMap.centerAndZoom(mapCenterPoint, mapCenterZoom);
+			
+			tempMap.addControl(new BMap.NavigationControl());
+			tempMap.addControl(new BMap.MapTypeControl({
+				mapTypes:[BMAP_NORMAL_MAP, BMAP_SATELLITE_MAP]
+			}));
+			tempMap.addControl(new BMap.ScaleControl({anchor: BMAP_ANCHOR_BOTTOM_RIGHT, offset: new BMap.Size(10, 10)}));
+			tempMap.enableScrollWheelZoom();
+			this.map = tempMap;
+			return this;
+		};
+	}
+	
+	/**
+	 * 创建标记点
+	 * @param obj 标签对象
+	 */
+	if(BaiduMapUtil.prototype.createMarker == undefined) {
+		BaiduMapUtil.prototype.createMarker = function(factor) {
+			var point = new BMap.Point(factor.lng, factor.lat);
+			var marker = new BMap.Marker(point);
+			this.map.addOverlay(marker);
+			//this.map.centerAndZoom(point, 15);
+			
+			if(factor.hasOwnProperty('label')) {
+				var label = new BMap.Label(factor.label.message);
+				label.setStyle(this.getLabelStyleBlue());
+				label.setOffset(new BMap.Size(0, -3));
+				marker.setLabel(label);
+				if(factor.hasOwnProperty('clickEven')) {
+					label.addEventListener('click', function(e){
+						factor.clickEven(e, {
+							"map":this.map,
+							"marker":marker,
+							"factor":factor
+						});
+					});
+				}
+			}
+			if(factor.hasOwnProperty('title')) {
+				marker.setTitle(factor.title);
+			}
+			if(factor.hasOwnProperty('clickEven')) {
+				marker.addEventListener('click', function(e){
+					factor.clickEven(e, {
+						"map":this.map,
+						"marker":marker,
+						"factor":factor
+					});
+				});
+			}
+			if(factor.hasOwnProperty('params')) {
+				var params = factor.params;
+				if(params.hasOwnProperty('icon')) {
+					var myIcon = new BMap.Icon(params.icon.src, new BMap.Size(params.icon.size.width, params.icon.size.height));
+					marker.setIcon(myIcon);
+				}
+			}
+			return marker;
+		};
+	}
+	
+	/**
+	 * 清空覆盖物
+	 */
+	if(BaiduMapUtil.prototype.clearOverlays == undefined) {
+		BaiduMapUtil.prototype.clearOverlays = function() {
+			this.map.clearOverlays();
+		};
+	}
+	
+	/**
+	 * 获取标签样式（蓝色）
+	 */
+	if(BaiduMapUtil.prototype.getLabelStyleBlue == undefined) {
+		BaiduMapUtil.prototype.getLabelStyleBlue = function(obj) {
+			var labelStyle = {
+				fontSize:"12px", 
+				border:"1px solid #8EA8E0", 
+				opacity:1, 
+				background:"#8EA8E0", 
+				color:"#FFFFFF", 
+				borderRadius:"2px", 
+				boxShadow:"rgba(0, 0, 0, 0.35) 2px 2px 3px", 
+				marginTop:"-10px"
+			};
+			return labelStyle;
+		};
+	}
+}
+
+
+/**
+ * 自定义百度地图控件
+ * 标签地图控件
+ * 自定义一个控件类LabelControl
+ * @param params 标签参数 格式 {"message":"出发地", "anchor":BMAP_ANCHOR_TOP_LEFT, "offset":new BMap.Size(10, 10)}
+ */
+function LabelControl(params) {
+	// 设置默认停靠位置和偏移量 
+	this.defaultAnchor = params.hasOwnProperty('anchor') ? params.anchor : BMAP_ANCHOR_TOP_RIGHT;
+	this.defaultOffset = params.hasOwnProperty('offset') ? params.offset : new BMap.Size(10, 10);
+	this.label = params.label;
+}    
+// 通过JavaScript的prototype属性继承于BMap.Control   
+LabelControl.prototype = new BMap.Control();
+
+// 自定义控件必须实现initialize方法，并且将控件的DOM元素返回   
+// 在本方法中创建个div元素作为控件的容器，并将其添加到地图容器中   
+LabelControl.prototype.initialize = function(map) {    
+	// 创建一个DOM元素   
+	var div = document.createElement("div");
+	// 添加文字说明    
+	div.appendChild(document.createTextNode(this.label));
+	// 设置样式    
+	div.style.cursor = "pointer"; 
+	div.style.width = eval(this.label.length * 15) + "px"; 
+	div.style.borderRadius = "3px"; 
+	div.style.border = "1px solid #8BA4DC"; 
+	div.style.fontSize = "12px";
+	div.style.fontFamily = "arial,simsun,sans-serif";
+	div.style.fontWeight = "bold";
+	div.style.textAlign = "center";
+	div.style.color = "#fff";
+	div.style.backgroundColor = "#8EA8E0"; 
+	div.style.padding = "2px 0px"; 
+	div.style.boxShadow = "rgba(0, 0, 0, 0.35) 2px 2px 3px"; 
+	// 添加DOM元素到地图中   
+	map.getContainer().appendChild(div);    
+	// 将DOM元素返回  
+	return div;    
+};
+
+/**
+ * 司机标记说明控件
+ */
+function DriverMarkerDescControl() {
+	// 设置默认停靠位置和偏移量  
+	this.defaultAnchor = BMAP_ANCHOR_TOP_RIGHT;    
+	this.defaultOffset = new BMap.Size(10, 50);
+	this.msg = " 司机当前位置";
+}    
+// 通过JavaScript的prototype属性继承于BMap.Control   
+DriverMarkerDescControl.prototype = new BMap.Control();
+
+// 自定义控件必须实现initialize方法，并且将控件的DOM元素返回   
+// 在本方法中创建个div元素作为控件的容器，并将其添加到地图容器中   
+DriverMarkerDescControl.prototype.initialize = function(map) {    
+	// 创建一个DOM元素   
+	var div = document.createElement("div");
+	// 添加图片
+	var img = document.createElement("img");
+	img.src = ctx + "/assets/images/driver_marker.png";
+	img.width = "16";
+	img.height = "16";
+	div.appendChild(img);
+	// 添加文字说明    
+	div.appendChild(document.createTextNode(this.msg));
+	// 设置样式    
+	div.style.cursor = "pointer"; 
+	div.style.width = "110px"; 
+	div.style.borderRadius = "3px"; 
+	div.style.border = "1px solid #8BA4DC"; 
+	div.style.fontSize = "12px";
+	div.style.fontFamily = "arial,simsun,sans-serif";
+	div.style.fontWeight = "bold";
+	div.style.textAlign = "center";
+	div.style.color = "#fff";
+	div.style.backgroundColor = "#8EA8E0"; 
+	div.style.padding = "2px 0px"; 
+	div.style.boxShadow = "rgba(0, 0, 0, 0.35) 2px 2px 3px"; 
+	// 添加DOM元素到地图中   
+	map.getContainer().appendChild(div);    
+	// 将DOM元素返回  
+	return div;    
+};
+
+/**
+ * 行政区划搜索
+ */
+function ADDSearchControl(params) {
+	this.defaultAnchor = params.hasOwnProperty('anchor') ? params.anchor : BMAP_ANCHOR_TOP_RIGHT;
+	this.defaultOffset = params.hasOwnProperty('offset') ? params.offset : new BMap.Size(5, 5);
+	this.searchClickEven = params.hasOwnProperty('searchClickEven') ? params.searchClickEven : function(){};
+	this.locationClickEven = params.hasOwnProperty('locationClickEven') ? params.locationClickEven : function(){};
+	this.chooseClickEven = params.hasOwnProperty('chooseClickEven') ? params.chooseClickEven : function(){};
+}    
+ADDSearchControl.prototype = new BMap.Control();
+ADDSearchControl.prototype.initialize = function(map) {
+	var div = document.createElement("div");
+	
+	var searchInput = document.createElement("input");
+	searchInput.id = "ipt_search_ad";
+	searchInput.style.width = "183px"; 
+	searchInput.style.height = "32px";
+	searchInput.style.padding = "0";
+	searchInput.style.marginTop = "-25px";
+	searchInput.style.vertical = "0";
+	searchInput.style.verticalAlign = "middle";
+	searchInput.style.border = "0";
+	searchInput.placeholder = "  行政区划搜索...";
+	div.appendChild(searchInput);
+	
+	var searchImg = document.createElement("img");
+	searchImg.id = "img_close_map";
+	searchImg.style.width = "32px"; 
+	searchImg.style.height = "32px";
+	searchImg.style.borderLeft = "1px solid #7B848F";
+	searchImg.style.borderRadius = "3px"; 
+	searchImg.title = "行政区划搜索";
+	searchImg.src = ctx + '/assets/images/map-search.png';
+	div.appendChild(searchImg);
+	
+	var locationImg = document.createElement("img");
+	locationImg.id = "img_location_map";
+	locationImg.style.width = "32px"; 
+	locationImg.style.height = "32px";
+	locationImg.style.borderLeft = "1px solid #7B848F";
+	locationImg.style.borderRadius = "3px"; 
+	locationImg.title = "地图定位还原";
+	locationImg.src = ctx + '/assets/images/map-location.png';
+	div.appendChild(locationImg);
+	
+	var chooseImg = document.createElement("img");
+	chooseImg.id = "img_choose_area";
+	chooseImg.style.width = "32px"; 
+	chooseImg.style.height = "32px";
+	chooseImg.style.borderLeft = "1px solid #7B848F";
+	chooseImg.style.borderRadius = "3px";
+	chooseImg.title = "使用当前搜索的区划生成区域";
+	chooseImg.src = ctx + '/assets/images/map-choose.png';
+	div.appendChild(chooseImg);
+	
+	div.style.cursor = "pointer"; 
+	div.style.width = "282px"; 
+	div.style.height = "32px"; 
+	div.style.borderRadius = "3px"; 
+	div.style.border = "1px solid #7B848F";
+	div.style.textAlign = "right";
+	div.style.backgroundColor = "#F4F4F4";
+	div.style.boxShadow = "rgba(0, 0, 0, 0.35) 2px 2px 3px";
+	var locationClickEven = this.locationClickEven;
+	var searchClickEven = this.searchClickEven;
+	var chooseClickEven = this.chooseClickEven;
+	locationImg.onmouseover = function() {
+		this.style.backgroundColor = "#ddd";
+	};
+	locationImg.onmouseout = function() {
+		this.style.backgroundColor = "#F4F4F4";
+	}; 
+	locationImg.onclick = function() {
+		locationClickEven();
+	};
+	searchImg.onmouseover = function() {
+		this.style.backgroundColor = "#ddd";
+	};
+	searchImg.onmouseout = function() {
+		this.style.backgroundColor = "#F4F4F4";
+	};
+	searchImg.onclick = function() {
+		searchClickEven();
+	};
+	chooseImg.onmouseover = function() {
+		this.style.backgroundColor = "#ddd";
+	};
+	chooseImg.onmouseout = function() {
+		this.style.backgroundColor = "#F4F4F4";
+	};
+	chooseImg.onclick = function() {
+		chooseClickEven();
+	};
+	map.getContainer().appendChild(div);  
+	return div;    
+};
+
+/**
+ * 返回控件
+ */
+function ReturnControl(params) {
+	this.defaultAnchor = params.hasOwnProperty('anchor') ? params.anchor : BMAP_ANCHOR_TOP_RIGHT;
+	this.defaultOffset = params.hasOwnProperty('offset') ? params.offset : new BMap.Size(5, 5);
+	this.clickEven = params.hasOwnProperty('clickEven') ? params.clickEven : function(){};
+}    
+ReturnControl.prototype = new BMap.Control();
+ReturnControl.prototype.initialize = function(map) {
+	var div = document.createElement("div");
+	var img = document.createElement("img");
+	img.id = "img_close_map";
+	img.style.width = "32px"; 
+	img.style.height = "32px";
+	img.title = "返回";
+	img.src = ctx + '/assets/images/map-return.png';
+	div.appendChild(img);
+	div.style.cursor = "pointer"; 
+	div.style.width = "32px"; 
+	div.style.height = "32px"; 
+	div.style.borderRadius = "3px"; 
+	div.style.border = "1px solid #7B848F";
+	div.style.textAlign = "center";
+	div.style.backgroundColor = "#F4F4F4";
+	div.style.boxShadow = "rgba(0, 0, 0, 0.35) 2px 2px 3px";
+	var clickEven = this.clickEven;
+	img.onclick = function() {
+		clickEven();
+	};
+	div.onmouseover = function() {
+		this.style.backgroundColor = "#ddd";
+	};
+	div.onmouseout = function() {
+		this.style.backgroundColor = "#F4F4F4";
+	};
+	map.getContainer().appendChild(div);  
+	return div;    
+};
+
+/**
+ * 获取多边形中心点
+ * @param polygon 多边形
+ */
+function getPolygonCenterPoint(polygon) {
+	var maxLng = 0, minLng = 0, maxLat = 0, minLat = 0;
+	var pointArray = polygon.getPath();
+	for(var i=0; i<pointArray.length; i++) {
+		if(i == 0) {
+			maxLng = pointArray[i].lng;
+			minLng = pointArray[i].lng;
+			maxLat = pointArray[i].lat;
+			minLat = pointArray[i].lat;
+		} else {
+			if(pointArray[i].lng < minLng) {  
+				minLng = pointArray[i].lng;  
+            }  
+            if(pointArray[i].lng > maxLng) {  
+            	maxLng = pointArray[i].lng;  
+            }  
+            if(pointArray[i].lat < minLat) {  
+            	minLat = pointArray[i].lat;  
+            }  
+            if(pointArray[i].lat > maxLat) {  
+            	maxLat = pointArray[i].lat;  
+            }
+		}
+	}
+	var lng = (maxLng + minLng) / 2.0;
+	var lat = (maxLat + minLat) / 2.0;
+	return new BMap.Point(lng, lat);
+}
+
+

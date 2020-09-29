@@ -1,0 +1,57 @@
+package cn.gnw.push.provider.mq;
+
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.provider.service.SmsPushService;
+import com.alibaba.fastjson.JSONObject;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+/**
+ * 待发送短信监听器
+ * @author: chengzd
+ * @date: 2018-09-18 17:20
+ */
+
+public class ToPushSmsListener extends BaseBS implements ChannelAwareMessageListener {
+
+    SmsPushService smsPushService = SpringUtil.getBean("smsPushService", SmsPushService.class);
+    private int number = 1;
+    public ToPushSmsListener(int number) {
+        this.number = number;
+    }
+
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        getLogger().info(new StringBuffer("待发送短信监听器[").append(this.number).append("]接收数据：").append(new String(message.getBody())).toString());
+        JSONObject msg = null;
+        boolean isNeedReInQueue = true;
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+
+        try {
+            msg = JSONObject.parseObject(new String(message.getBody()));
+            String recordId = msg.getString("record_id");
+            String mobile = msg.getString("mobile");
+            String content = msg.getString("content");
+            String smsTid = msg.getString("sms_tid");
+            String smsPwd = msg.getString("sms_pwd");
+            smsPushService.sendSms(smsTid, smsPwd, recordId, mobile, content);
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error(e.getMessage());
+        } finally {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+}

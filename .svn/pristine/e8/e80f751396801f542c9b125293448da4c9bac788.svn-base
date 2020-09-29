@@ -1,0 +1,83 @@
+package cn.gnw.push.iosmdm.consumer.fallback;
+
+import cn.gnw.push.iosmdm.consumer.interfaces.PushIosMdmServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
+/**
+ * iosmdm推送服务失败降级处理
+ *
+ * @author: xiaowb
+ * @mail xiaowb@txtws.com
+ * @date: 2018-11-06 15:13
+ */
+@Component
+public class PushIosMdmServiceClientFallback implements PushIosMdmServiceClient {
+
+    private final JSONObject resultJson = new JSONObject();
+
+    public PushIosMdmServiceClientFallback() {
+        resultJson.put("status", -1);
+        resultJson.put("message", "请求失败，请重新提交。");
+    }
+
+    @Override
+    public String downConfig(@RequestParam("uid")String uid,@RequestParam("source")String source) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String checkin(@RequestBody JSONObject body) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String server(@RequestBody JSONObject body){
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String deviceLock(@RequestBody JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String deviceInformation(@RequestBody JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String deviceInstalledAppsList(@RequestBody JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String deviceInstallApplication(@RequestBody JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String deviceRemoveApplication(@RequestBody JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String restrictionSystemApplication(@RequestBody JSONObject rParams) { return resultJson.toJSONString(); }
+
+    @Override
+    public String installFilterUrl(JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String installBlacklistApps(JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+
+    @Override
+    public String getIosMdmDeviceId(JSONObject rParams) {
+        return resultJson.toJSONString();
+    }
+}

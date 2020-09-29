@@ -1,0 +1,161 @@
+package cn.gnw.push.websocket.provider.config;
+
+import cn.gnw.push.api.entity.websocket.WSConstants;
+import cn.gnw.push.websocket.provider.listener.WSAuthorizationListener;
+import cn.gnw.push.websocket.provider.listener.WSExceptionListener;
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOServer;
+import io.netty.channel.epoll.Epoll;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+import java.io.InputStream;
+
+/**
+ * websocket 全局变量初始化
+ *
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-13 22:28
+ */
+@Component
+@ConfigurationProperties(prefix = "ws")
+public class WSConfig {
+    private int port;
+    private int pingInterval;
+    private int pingTimeout;
+    private int clientPingTimeout;
+    private int firstDataTimeout;
+    private int upgradeTimeout;
+    private int maxFramePayLoadLength;
+    private int maxHttpContentLength;
+    private String keyStorePassword;//签名密钥
+    private String keyStorePath;//jks文件路径
+    private String deviceInfoUrl;
+
+    SocketIOServer server = null;
+
+    public void init() {
+        Configuration config = new Configuration();
+        config.setContext(WSConstants.WSCONTENT);//自定义Context
+        config.setPort(port);
+        if (Epoll.isAvailable()) {
+            System.out.println("Enable Epoll");
+            config.setUseLinuxNativeEpoll(true);
+        }
+        //Address already in use  处理启动报错
+        config.getSocketConfig().setReuseAddress(true);
+        //关闭数据压缩功能,减少内存占用.
+        config.setHttpCompression(false);
+        config.setWebsocketCompression(false);
+        config.setPingInterval(pingInterval);
+        config.setPingTimeout(pingTimeout);
+        config.setClientPingTimeout(clientPingTimeout);
+        config.setUpgradeTimeout(upgradeTimeout);
+        config.setMaxHttpContentLength(maxHttpContentLength);
+        config.setMaxFramePayloadLength(maxFramePayLoadLength);
+        config.setExceptionListener(new WSExceptionListener());
+        // 避免“无声通道”攻击
+        config.setFirstDataTimeout(firstDataTimeout);
+        config.setAuthorizationListener(new WSAuthorizationListener());//授权监听器,每次握手时触发;
+        config.setRandomSession(true);
+        //证书相关
+//        config.setKeyStorePassword(keyStorePassword);
+//        InputStream stream = WSConfig.class.getResourceAsStream(new StringBuffer("/")
+//                .append(keyStorePath).toString());
+//        config.setKeyStore(stream);
+        server = new SocketIOServer(config);
+    }
+
+    public SocketIOServer getServer() {
+        return server;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public int getPingInterval() {
+        return pingInterval;
+    }
+
+    public void setPingInterval(int pingInterval) {
+        this.pingInterval = pingInterval;
+    }
+
+    public int getPingTimeout() {
+        return pingTimeout;
+    }
+
+    public void setPingTimeout(int pingTimeout) {
+        this.pingTimeout = pingTimeout;
+    }
+
+    public int getClientPingTimeout() {
+        return clientPingTimeout;
+    }
+
+    public void setClientPingTimeout(int clientPingTimeout) {
+        this.clientPingTimeout = clientPingTimeout;
+    }
+
+    public int getFirstDataTimeout() {
+        return firstDataTimeout;
+    }
+
+    public void setFirstDataTimeout(int firstDataTimeout) {
+        this.firstDataTimeout = firstDataTimeout;
+    }
+
+    public int getUpgradeTimeout() {
+        return upgradeTimeout;
+    }
+
+    public void setUpgradeTimeout(int upgradeTimeout) {
+        this.upgradeTimeout = upgradeTimeout;
+    }
+
+    public int getMaxFramePayLoadLength() {
+        return maxFramePayLoadLength;
+    }
+
+    public void setMaxFramePayLoadLength(int maxFramePayLoadLength) {
+        this.maxFramePayLoadLength = maxFramePayLoadLength;
+    }
+
+    public int getMaxHttpContentLength() {
+        return maxHttpContentLength;
+    }
+
+    public void setMaxHttpContentLength(int maxHttpContentLength) {
+        this.maxHttpContentLength = maxHttpContentLength;
+    }
+
+    public String getKeyStorePassword() {
+        return keyStorePassword;
+    }
+
+    public void setKeyStorePassword(String keyStorePassword) {
+        this.keyStorePassword = keyStorePassword;
+    }
+
+    public String getKeyStorePath() {
+        return keyStorePath;
+    }
+
+    public void setKeyStorePath(String keyStorePath) {
+        this.keyStorePath = keyStorePath;
+    }
+
+    public String getDeviceInfoUrl() {
+        return deviceInfoUrl;
+    }
+
+    public void setDeviceInfoUrl(String deviceInfoUrl) {
+        this.deviceInfoUrl = deviceInfoUrl;
+    }
+}

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.sms">
+
+    <!-- 短信平台账号 -->
+    <resultMap id="smsConfig" type="java.util.Map">
+        <result property="sms_config_id" column="sms_config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_tid" column="sms_tid" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_pwd" column="sms_pwd" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_platform" column="sms_platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_source" column="sms_source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+
+    </resultMap>
+
+    <!-- 短信发送记录 -->
+    <resultMap id="pushSmsRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_tid" column="sms_tid" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="phone" column="phone" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="is_send" column="is_send" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <!--<result property="sms_platform" column="sms_platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_config_id" column="sms_config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="sms_source" column="sms_source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>-->
+
+    </resultMap>
+
+    <!-- 短信模板 -->
+    <resultMap id="pushSmsTemplate" type="java.util.Map">
+        <result property="sms_temp_id" column="sms_temp_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="temp_name" column="temp_name" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="temp_number" column="temp_number" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="temp_code" column="temp_code" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="temp_type" column="temp_type" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="temp_content" column="temp_content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 增加短信配置 -->
+    <insert id="addPushSmsConfig" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_sms_config(sms_config_id, sms_tid, sms_pwd, sms_platform, sms_source, enabled, remark)
+        VALUES(#{sms_config_id}, #{sms_tid}, #{sms_pwd}, #{sms_platform}, #{sms_source}, #{enabled}, #{remark})
+    </insert>
+
+    <!-- 验证是否存在 -->
+    <select id="verifySmsConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="smsConfig">
+        SELECT * FROM t_push_sms_config t
+        WHERE 1 = 1
+        <if test="platform != NULL and platform != ''">
+            AND t.sms_platform = #{platform}
+        </if>
+        <if test="source != NULL and source != ''">
+            AND t.sms_source = #{source}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!--查询短信平台配置 -->
+    <select id="queryPushSmsConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="smsConfig">
+        SELECT * FROM t_push_sms_config t
+        WHERE 1 = 1 AND enabled = 1
+        <if test="source != NULL and source != ''">
+            AND t.sms_source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND t.enabled = #{enabled}
+        </if>
+        order by t.sms_source
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+    </select>
+
+    <!--查询短信配置总个数 -->
+    <select id="queryPushSmsConfigCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_sms_config t
+        WHERE 1 = 1 AND enabled = 1
+        <if test="source != NULL and source != ''">
+            AND t.sms_source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND t.enabled = #{enabled}
+        </if>
+    </select>
+
+    <!-- 增加短信发送记录 -->
+    <insert id="addPushSmsRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_sms_record(record_id, phone, sms_tid, content, source, platform, is_send, send_time, remark)
+        VALUES(#{record_id}, #{mobile}, #{sms_tid}, #{content}, #{source}, #{platform}, #{is_send}, NOW(), #{remark})
+    </insert>
+
+    <!-- 修改短信发送记录 -->
+    <update id="updatePushSmsRecord" parameterType="com.alibaba.fastjson.JSONObject">
+        UPDATE t_push_sms_record t
+        SET t.is_send = #{is_send}
+        ,sms_tid= #{sms_tid}
+        ,t.result = #{result}
+        WHERE t.record_id = #{record_id}
+    </update>
+
+    <!-- 查询短信发送记录 -->
+    <select id="queryPushSmsRecord" parameterType="com.alibaba.fastjson.JSONObject" resultMap="pushSmsRecord">
+        SELECT t.*
+        FROM t_push_sms_record t
+        WHERE 1 = 1
+
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="phone != NULL and phone != ''">
+            AND t.phone = #{phone}
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+    </select>
+
+    <!-- 查询短信发送记录总条数 -->
+    <select id="queryPushSmsRecordCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_sms_record t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="phone != NULL and phone != ''">
+            AND t.phone = #{phone}
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+
+    </select>
+
+
+    <!-- 阿里云增加短信发送记录 -->
+    <insert id="addAliyunSmsRecord" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_sms_record(record_id, sms_tid, phone, content, source, platform, is_send, send_time, remark)
+        VALUES(#{record_id}, #{key_id}, #{phone}, #{content}, #{source}, #{platform}, #{is_send}, NOW(), #{remark})
+    </insert>
+
+    <!-- 阿里云修改短信发送记录 -->
+    <update id="updatePushAliyunSmsRecord" parameterType="com.alibaba.fastjson.JSONObject">
+        UPDATE t_push_sms_record t
+        SET t.is_send = #{isSend}
+        ,t.result = #{result}
+        WHERE t.record_id = #{record_id}
+    </update>
+
+
+    <!-- 查询阿里云短信模板 -->
+    <select id="queryPushSmsTemplate" parameterType="java.util.Map" resultMap="pushSmsTemplate">
+      SELECT t.* FROM t_push_sms_template t where 1=1
+        <if test="temp_num != NULL and temp_num != ''">
+            AND t.temp_number = #{temp_num}
+        </if>
+
+    </select>
+
+    <!-- 短信发送统计 -->
+    <select id="querySmsStatistics" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.util.Map">
+        select
+        a.SMS_PLATFORM platform ,
+        a.REMARK remark,
+        IFNULL(b.count, 0) yCount,
+        IFNULL(c.count, 0) eCount
+        from (select t.SMS_PLATFORM, t.REMARK from t_push_sms_config t where t.SMS_PLATFORM <![CDATA[ <> ]]> '00' group by t.SMS_PLATFORM) a
+        left join
+        (select t.PLATFORM, count(1) as count from t_push_sms_record t where t.IS_SEND ='1' group by t.PLATFORM ) b
+        on a.SMS_PLATFORM = b.PLATFORM
+        left join
+        (select t.PLATFORM, count(1) as count from t_push_sms_record t where t.IS_SEND ='0' group by t.PLATFORM ) c
+        on a.SMS_PLATFORM = c.PLATFORM
+        order by a.SMS_PLATFORM
+    </select>
+</mapper>

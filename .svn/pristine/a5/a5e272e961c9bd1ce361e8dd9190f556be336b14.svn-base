@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.mdm">
+
+
+    <!-- mdm推送记录 -->
+    <resultMap id="mdmRecord" type="java.util.Map">
+        <result property="command_id" column="command_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="command" column="command" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="call_back" column="call_back" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="ctype" column="ctype" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="cvalue" column="cvalue" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="do_it" column="do_it" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="create_time" column="create_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 查询IOS-MDM推送记录 -->
+    <select id="queryPushMdmRecord" resultMap="mdmRecord">
+        SELECT * from t_push_ios_mdm_record t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+        <if test="command != NULL and command != ''">
+            AND t.command = #{command}
+        </if>
+        ORDER BY t.create_time DESC
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+    </select>
+
+    <!-- 查询IOS-MDM推送记录总条数 -->
+    <select id="queryPushMdmRecordCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM t_push_ios_mdm_record t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+        <if test="command != NULL and command != ''">
+            AND t.command = #{command}
+        </if>
+    </select>
+
+</mapper>

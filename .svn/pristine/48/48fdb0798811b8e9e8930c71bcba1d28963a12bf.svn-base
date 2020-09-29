@@ -1,0 +1,82 @@
+package cn.gnw.push.api.utils;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.util.Map;
+
+/**
+ * 短信推送工具类
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-18 16:14
+ */
+public class PushSmsUtil {
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private PushSmsUtil () {};
+    private static class PushSmsUtilManageHolder {
+        private static PushSmsUtil instance = new PushSmsUtil();
+    }
+    public static PushSmsUtil getInstance() {
+        return PushSmsUtilManageHolder.instance;
+    }
+
+    public JSONObject  toPushSmsInQueue (Map<String, String> params) {
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        JSONObject msg = new JSONObject();
+        String recordId = params.get("record_id");
+        String mobile = params.get("mobile");
+        String content = params.get("content");
+        String smsTid = params.get("sms_tid");
+        String smsPwd = params.get("sms_pwd");
+
+        msg.put("record_id", recordId);
+        msg.put("mobile", mobile);
+        msg.put("content", content);
+        msg.put("sms_tid", smsTid);
+        msg.put("sms_pwd", smsPwd);
+        rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_SMS_QUEUE, msg);
+        return msg;
+    }
+
+    /**
+     * 阿里云短信加入队列
+     * @param params
+     * @return
+     */
+    public JSONObject  toAliyunSmsInQueue (JSONObject params) {
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        JSONObject msg = new JSONObject();
+        rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_ALIYUN_SMS_QUEUE, params);
+        return params;
+    }
+
+    /**
+     * 阿里云短信加入队列
+     * @param params
+     * @return
+     */
+    public JSONObject  toAliyunSmsErrorInQueue (Map<String, String> params) {
+        RabbitTemplate rabbitTemplate = SpringUtil.getBean("rabbitTemplate", RabbitTemplate.class);
+        JSONObject msg = new JSONObject();
+        String recordId = params.get("record_id");
+        String mobile = params.get("mobile");
+        String content = params.get("content");
+        String smsTid = params.get("sms_tid");
+        String smsPwd = params.get("sms_pwd");
+
+        msg.put("record_id", recordId);
+        msg.put("mobile", mobile);
+        msg.put("content", content);
+        msg.put("sms_tid", smsTid);
+        msg.put("sms_pwd", smsPwd);
+
+        rabbitTemplate.convertAndSend(Constants.RMQ_GNW_PUSH_ALIYUN_SMS_QUEUE_ERROR, params);
+        return msg;
+    }
+
+}

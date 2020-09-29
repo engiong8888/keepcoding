@@ -1,0 +1,99 @@
+package cn.gnw.push.iosmdm.provider.util;
+
+import cn.gnw.push.api.utils.ConfigUtils;
+import com.jiangge.utils.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.IOException;
+import java.util.Map;
+
+public class MDMTasker {
+
+    private Log logger = LogFactory.getLog(MDMTasker.class);
+
+	/*public void createMobileconfig(Map<String, String> taskParam){
+		try {
+			*//**生成签名的MobileConfig配置文件的三个证书文件**//*
+            logger.info("----------------------生成证书文件等的路径 start---------------------");
+	        String configPath = taskParam.get("configPath");
+	        String tempPath = taskParam.get("tempPath");
+	        String deviceId = taskParam.get("deviceId");
+	        String source = taskParam.get("source");
+	        String crtPath = configPath + ConfigUtils.mdmProperties().getProperty("APNS_CRT");
+	        String keyPath = configPath + ConfigUtils.mdmProperties().getProperty("APNS_KEY");
+	        String pemPath = configPath + ConfigUtils.mdmProperties().getProperty("APNS_PEM");
+            logger.info("----------------------生成证书文件等的路径 end---------------------");
+	        *//**创建未签名的文件和已签名的MobileConfig文件**//*
+            logger.info("----------------------生成未签名的mobileconfig文件 start---------------------");
+	        String oldPath =  tempPath + "/" + deviceId + ".mobileconfig";
+	        String newPath =  tempPath + "/" + deviceId + "Signed.mobileconfig";
+			SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+			Map<String,String> configParams = new HashMap<String,String>();
+			configParams.put("source",source);
+			IosMdmConfig iosMdmConfig = simpleMybatisDao.selectOne("mdm.findIosMdmConfigBean", configParams, IosMdmConfig.class);
+			logger.info("iosMdmConfig:" + JSONObject.toJSONString(iosMdmConfig));
+			//String content = MdmUtils.readConfig(configPath).replaceAll("#deviceId#", deviceId);
+			String content = iosMdmConfig.getMobileConfig().toString().replaceAll("#device_id#", deviceId);
+	        boolean createSuccess = IosMdmUtils.createMobileConfigFile(oldPath,content);
+            logger.info("----------------------生成未签名的mobileconfig文件 end---------------------");
+	        *//**签名和认证过程**//*
+	        if(createSuccess){
+                logger.info("----------------------签名mobileconfig文件 start---------------------");
+	            String oldCmd = "openssl smime -sign -in {0} -out {1} -signer {2} -inkey {3} -certfile {4} -outform der -nodetach";
+	            String newCmd = MessageFormat.format(oldCmd,oldPath,newPath,crtPath,keyPath,pemPath);
+				logger.info("OpenSSL：\n" + newCmd);
+	            //Runtime.getRuntime().exec(newCmd);
+	            FileUtils.copyFile(oldPath, newPath);
+				logger.info("----------------------签名mobileconfig文件 end---------------------");
+	        }
+		} catch (Exception e) {
+			logger.error("创建证书异常", e);
+		}
+	}*/
+	
+	
+	public void syncDeviceInfo(Map<String, String> taskParam) throws IOException {
+		try {
+			Thread.sleep(2000);
+			String url = ConfigUtils.mdmProperties().getProperty("BASE_URL")+"/device/info";
+			MDMHttpUtils.sendGet(url, taskParam);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void syncAppList(Map<String, String> taskParam) throws IOException {
+		try {
+			Thread.sleep(2000);
+			String url = ConfigUtils.mdmProperties().getProperty("BASE_URL")+"/device/apps.do";
+			MDMHttpUtils.sendGet(url, taskParam);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void sendCallBack(Map<String, String> taskParam){
+		try {
+			String url = taskParam.get("callBack")==null?"":taskParam.get("callBack");
+			if(StringUtils.isNotEmpty(url)){
+				taskParam.remove("callBack");
+				MDMHttpUtils.sendGet(url, taskParam);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void sendCommandCallBack(Map<String, String> taskParam){
+		try {
+			String url = taskParam.get("callBack")==null?"":taskParam.get("callBack");
+			if(StringUtils.isNotEmpty(url)){
+				taskParam.remove("callBack");
+				MDMHttpUtils.sendGet(url, taskParam);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}

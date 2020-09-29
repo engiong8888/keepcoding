@@ -1,0 +1,427 @@
+package cn.gnw.push.provider.controller;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.CommonUtil;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.RedisUtil;
+import cn.gnw.push.provider.service.JgPushService;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 极光推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-25 15:23
+ */
+@RestController
+@RequestMapping(value = "/push/jg")
+public class JgPushController extends BaseBS {
+
+    /**
+     * 根据platform推送，02苹果, 03安卓
+     * 极光推送
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams){
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"content", "platform", "push_type", "source"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_JIGUANG_SEND);
+
+            JgPushService jPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_JG_CONFIG);
+                if(result.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取极光配置config [Redis][key]{").append(Constants.REDIS_JG_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String jgStr = result.getString("data");
+                    if (!StringUtil.isBlank(jgStr)) {
+                        JSONObject jgConfig = JSONObject.parseObject(jgStr);
+                        String appKey = jgConfig.getString("app_key");
+                        String masterSecret = jgConfig.getString("master_secret");
+
+                        String pushType = rParams.getString("push_type");
+                        String title = rParams.getString("title");
+                        String alert = rParams.getString("content");
+                        String platform = rParams.getString("platform");
+                        List<String> alias = (List<String>) rParams.get("alias");
+                        List<String> tags = (List<String>) rParams.get("tags");
+                        //            List<String> registrationIds = (List<String>) rParams.get("registration_ids");
+                        List<String> devices = (List<String>) rParams.get("devices");
+                        Map<String, String> extra = (Map<String, String>) rParams.get("extra");
+                        String jgIosEnvironment = rParams.getString("jg_ios_environment");
+
+                        List<String> regIdList = null;
+
+                        if (devices != null && !devices.isEmpty()) {
+                            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                            Map<String, Object> params = new HashMap<String, Object>();
+                            params.put("devices", devices);
+                            List<String> devList = simpleMybatisDao.selectList("push.jiguang.queryIdListByDevices", params, String.class);
+                            if (devList.size() > 0) {
+                                regIdList = devList;
+                                System.out.println("regIdList.size()>>>" + regIdList.size());
+                            } else {
+                                result.put("status", -1);
+                                result.put("message", "未找到设备对应的Regist_id");
+                                return result.toString();
+                            }
+
+                        }
+
+                        JSONObject params = new JSONObject();
+                        params.put("push_type", pushType);
+                        params.put("title", title);
+                        params.put("alert", alert);
+                        params.put("platform", platform);
+                        params.put("alias", alias);
+                        params.put("tags", tags);
+                        params.put("registration_ids", regIdList);
+                        params.put("extra", extra);
+                        params.put("app_key", appKey);
+                        params.put("master_secret", masterSecret);
+                        params.put("jg_ios_environment", jgIosEnvironment);
+                        getLogger().info("极光推送，参数：{}", JSONObject.toJSONString(params));
+                        result = jPushService.send(params);
+                        getLogger().debug("极光推送，结果: {}" + result.toString());
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "jiguang config in redis does not exist");
+                    }
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("极光推送，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * 全设备推送
+     * 群推
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send/all")
+    @ResponseBody
+    private String sendGroup (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"content"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_JIGUANG_ALL_SEND);
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_JG_CONFIG);
+                if(result.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取极光配置config [Redis][key]{").append(Constants.REDIS_JG_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String jgStr = result.getString("data");
+                    if (!StringUtil.isBlank(jgStr)) {
+                        JSONObject jgConfig = JSONObject.parseObject(jgStr);
+                        String appKey = jgConfig.getString("app_key");
+                        String masterSecret = jgConfig.getString("master_secret");
+
+                        JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+                        JSONObject params = new JSONObject();
+                        params.put("alert", rParams.getString("content"));
+                        params.put("app_key", appKey);
+                        params.put("master_secret", masterSecret);
+
+                        jgPushService.sendAll(params);
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "jiguang config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("极光推送（全量推送），失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toJSONString();
+    }
+
+    /**
+     * 获取送到统计信息
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/receive/report")
+    @ResponseBody
+    private String getReportReceiveds (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"msg_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            try {
+                result = RedisUtil.getInstance().getConfigFromRedis(rParams.getString("source"), Constants.REDIS_JG_CONFIG);
+                if(result.getIntValue("status") == 0) {
+                    getLogger().info(new StringBuffer("获取极光配置config [Redis][key]{").append(Constants.REDIS_MAIL_CONFIG)
+                            .append("}[config]{").append(result).append("}").toString());
+                    String jgStr = result.getString("data");
+                    if (!StringUtil.isBlank(jgStr)) {
+                        JSONObject jgConfig = JSONObject.parseObject(jgStr);
+                        String appKey = jgConfig.getString("app_key");
+                        String masterSecret = jgConfig.getString("master_secret");
+                        String msg_id = rParams.getString("msg_id");
+                        JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+                        getLogger().info("获取送到统计信息，参数：{} ", msg_id);
+                        result = jgPushService.getReportReceiveds(masterSecret, appKey, msg_id);
+                        getLogger().info("获取送到统计信息，结果：{} ", result.toJSONString());
+                    } else {
+                        result.put("status", -1);
+                        result.put("message", "jiguang config in redis does not exist");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取送到统计信息，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toString();
+    }
+
+
+    /**
+     * 绑定设备regId
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"device_id", "regist_id", "platform"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_JIGUANG_BINDING);
+            try {
+                String deviceId = rParams.getString("device_id");
+                Map<String, String> qParams = new HashMap<String, String>();
+                qParams.put("device_id", deviceId);
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.jiguang.queryBindRecord", qParams, Map.class);
+                JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+
+                if(bindRecord != null ){
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("bind_record_id", bindRecord.get("bind_record_id"));
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    getLogger().info("极光设备修改绑定regId，参数：{} ", params.toString());
+                    result = jgPushService.updateJgBindRecord(params);
+                    getLogger().info("极光设备修改绑定regId，结果：{} ", result.toJSONString());
+//                    result.put("status", -1);
+//                    result.put("message", "已绑定设备");
+                } else {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("device_id", rParams.getString("device_id"));
+                    params.put("regist_id", rParams.getString("regist_id"));
+                    params.put("platform", rParams.getString("platform"));
+                    getLogger().info("设备绑定regist_id，参数：{} ", params.toString());
+                    result = jgPushService.bindRecord(params);
+                    getLogger().info("设备绑定regist_id，结果：{} ", result.toJSONString());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("设备绑定registId，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toString();
+    }
+
+    /**
+     * 解除绑定设备
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbindDevice (HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"device_id"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if (verifyResult.getIntValue("status") != 0) {
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_JIGUANG_UNBIND);
+            try {
+                String deviceId = rParams.getString("device_id");
+                Map<String, String> qParams = new HashMap<String, String>();
+                qParams.put("device_id", deviceId);
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                Map<String, String> bindRecord = simpleMybatisDao.selectOne("push.jiguang.queryBindRecord", qParams, Map.class);
+
+                if(bindRecord != null ){
+                    JgPushService jgPushService = SpringUtil.getBean("jgPushService", JgPushService.class);
+
+                    qParams.put("bind_record_id", bindRecord.get("bind_record_id"));
+                    getLogger().info("设备解除绑定regId，参数：{} ", qParams.toString());
+                    result = jgPushService.unbind(qParams);
+                    getLogger().info("设备解除绑定regId，结果：{} ", result.toJSONString());
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "设备未绑定regId");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("设备绑定regId，失败：{}", e.getMessage());
+                result.put("status", -1);
+                result.put("message", e.getMessage());
+            }
+
+        }
+        return result.toString();
+    }
+
+    /**
+     * 获取极光推送记录
+     * @param request
+     * @param response
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/query/record")
+    @ResponseBody
+    public String getPushJgRecord(HttpServletRequest request, HttpServletResponse response, @RequestBody JSONObject rParams) {
+        JSONObject result = new JSONObject();
+        String[] argSymbols = {"source", "limit", "pos"};
+        JSONObject verifyResult = CommonUtil.getInstance().verifyArgsEmpty(rParams, argSymbols);
+        if(verifyResult.getIntValue("status") != 0){
+            result = verifyResult;
+        } else {
+            //jsonSchema验证
+//            JsonSchemaUtil.validateJson(rParams.toJSONString(), SchenaConfigUtil.SCHENA_JIGUANG_QUERY_RECORD);
+            try {
+
+                String limit = rParams.getString("limit");
+                JSONObject qParams = new JSONObject();
+
+                if(!"-1".equals(limit)) {
+                    qParams.put("pos", rParams.getInteger("pos"));
+                    qParams.put("limit", Integer.valueOf(limit));
+                }
+                qParams.put("source", rParams.getString("source"));
+                qParams.put("regist_id", rParams.getString("regist_id"));
+                qParams.put("alias", rParams.getString("alias"));
+                qParams.put("platform", rParams.getString("platform"));
+                qParams.put("title", rParams.getString("title"));
+                qParams.put("content", rParams.getString("content"));
+                qParams.put("status", rParams.getString("status"));
+                qParams.put("remark", rParams.getString("remark"));
+
+                SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                JSONObject cParams = new JSONObject();
+                cParams.put("source", rParams.getString("source"));
+                Map<String, String> jiguangConfig = simpleMybatisDao.selectOne("push.jiguang.queryPushJgConfig", cParams, Map.class);
+                if(jiguangConfig != null) {
+                    qParams.put("app_key", jiguangConfig.get("app_key"));
+                    getLogger().info(new StringBuffer("极光推送流水查询，参数：").append(JSONObject.toJSONString(qParams)).toString());
+                    Integer dataCount = simpleMybatisDao.selectOne("push.jiguang.queryPushJiguangRecordCount", qParams, Integer.class);
+                    List<Map> smsRecordList = simpleMybatisDao.selectList("push.jiguang.queryPushJiguangRecord", qParams, Map.class);
+                    if (smsRecordList == null) {
+                        result.put("status", -1);
+                        result.put("message", "暂无极光推送发送记录！");
+                    } else {
+                        result.put("status", 0);
+                        result.put("message", "ok");
+                        result.put("data", smsRecordList);
+                        result.put("total", dataCount);
+                        result.put("count", smsRecordList.size());
+                    }
+                } else {
+                    result.put("status", -1);
+                    result.put("message", "获取极光配置信息错误！");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().error("获取极光推送记录失败：{}", e.getMessage());
+            }
+        }
+        getLogger().info(new StringBuffer("极光推送流水查询，结果：").append(result.toJSONString()).toString());
+        return result.toString();
+    }
+
+    /**
+     * 更新极光 redis缓存
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/update/jg_config")
+    @ResponseBody
+    public String updateRedisJgConfig(HttpServletRequest request, HttpServletResponse response){
+        JSONObject result = new JSONObject();
+
+        try {
+//            String source = rParams.getString("source");
+            JSONObject params = new JSONObject();
+            params.put("enabled", "1");
+            SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+            List<Map> mailConfigList = simpleMybatisDao.selectList("push.jiguang.queryPushJgConfig", params, Map.class);
+            if(mailConfigList != null){
+                result = RedisUtil.getInstance().updateJiguangConfigToRedis(Constants.REDIS_JG_CONFIG, mailConfigList);
+            }else {
+                result.put("status", -1);
+                result.put("message", "jiguang configs is null");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getLogger().error("jiguang redis更新，失败：{}", e.getMessage());
+            result.put("status", -1);
+            result.put("message", e.getMessage());
+        }
+        return result.toString();
+    }
+}

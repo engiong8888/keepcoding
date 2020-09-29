@@ -1,0 +1,249 @@
+package cn.gnw.push.provider.service;
+
+import cn.gnw.pub.base.db.SimpleMybatisDao;
+import cn.gnw.pub.base.impl.BaseBS;
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.pub.base.utils.UniqueKeyUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.utils.JPushUtil;
+import cn.gnw.push.api.utils.PushUtil;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+/**
+ * 极光推送
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-25 15:41
+ */
+@Service
+public class JgPushService extends BaseBS {
+
+    /**
+     * 极光推送
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject send(JSONObject params){
+        JSONObject result = new JSONObject();
+
+//        JSONObject JMsg = JPushClientUtil.getInstance().toPushJgInQueue(params);
+        JSONObject jgMsg = PushUtil.getInstance().toPushInQueue(Constants.PUSH_TYPE_JIGUANG, params);
+        getLogger().info("极光推送信息入队列：" + jgMsg);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 极光推送
+     * 推送到用户时保存推送记录
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject sendJg (JSONObject params) {
+        JSONObject result = new JSONObject();
+        Map<String, String> uParams = new HashMap<String, String>();
+
+        String pushType = params.getString("push_type");
+        String title = params.getString("title");
+        String alert = params.getString("alert");
+        String platform = params.getString("platform");
+        List<String> alias = (List<String>)params.get("alias");
+        List<String> tags = (List<String>) params.get("tags");
+        List<String> registrationIds = (List<String>) params.get("registration_ids");
+        Map<String, String> extra = (Map<String, String>)params.get("extra");
+        String appKey = params.getString("app_key");
+        String masterSecret = params.getString("master_secret");
+        String jgIosEnvironment = params.getString("jg_ios_environment");
+        JPushUtil jpushUtil = new JPushUtil(masterSecret, appKey);
+
+        if(alias == null && tags == null && registrationIds == null) {
+            jpushUtil.sendMessage(title, alert, jgIosEnvironment);
+        } else if (alias != null) {
+            if(Constants.PLATFORM_ANDROID.equals(platform)) {
+                jpushUtil.sendMessageByAliasForAndroid(title, alert, alias, extra, pushType);
+            }else if(Constants.PLATFORM_IOS.equals(platform)){
+                jpushUtil.sendMessageByAliasForIOS(title, alert, alias, extra, pushType, jgIosEnvironment);
+            }
+        } else if (tags != null) {
+            if(Constants.PLATFORM_ANDROID.equals(platform)) {
+                jpushUtil.sendMessageByTagsForAndroid(title, alert, tags, extra, pushType);
+            } else if(Constants.PLATFORM_IOS.equals(platform)) {
+                jpushUtil.sendMessageByTagsForIOS(title, alert, tags, extra, pushType, jgIosEnvironment);
+            }
+        } else if (registrationIds != null) {
+            String status = "";
+            if(Constants.PLATFORM_ANDROID.equals(platform)) {
+                List<Map> jgList = new ArrayList<Map>();
+                Map<String, String> jgParams = null;
+                if (registrationIds.size() > 0) {
+                    for (int i = 0; i < registrationIds.size(); i++) {
+                        jgParams = new HashMap<String, String>();
+                        String recordId = UniqueKeyUtil.getKey(new Date());
+                        JSONObject sendResult = jpushUtil.sendMessageByRegistrationIdForAndroid(title, alert, registrationIds.get(i), extra, pushType);
+                        jgParams.put("record_id", recordId);
+                        jgParams.put("app_key", appKey);
+                        jgParams.put("title", title);
+                        jgParams.put("content", alert);
+                        jgParams.put("remark", params.getString("remark"));
+                        jgParams.put("registration_id", registrationIds.get(i));
+                        jgParams.put("platform", platform);
+                        jgParams.put("push_type", pushType);
+                        jgParams.put("result", sendResult.getString("message"));
+                        if (sendResult.getIntValue("status") != 0) {
+                            status = "1";
+                        } else {
+                            status = "0";
+                        }
+                        jgParams.put("status", status);
+                        jgList.add(jgParams);
+                        getLogger().info("极光registId推送安卓[" + registrationIds.get(i) + "] result:{}" + sendResult);
+                    }
+
+                    SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                    simpleMybatisDao.insert("push.jiguang.addPushJiguangRecordList", jgList);
+                }
+            } else if (Constants.PLATFORM_IOS.equals(platform)) {
+                List<Map> jgList = new ArrayList<Map>();
+                Map<String, String> jgParams = null;
+                if (registrationIds.size() > 0) {
+                    for (int i = 0; i < registrationIds.size(); i++) {
+                        jgParams = new HashMap<String, String>();
+                        String recordId = UniqueKeyUtil.getKey(new Date());
+                        JSONObject sendResult = jpushUtil.sendMessageByRegistrationIdForIOS(title, alert, registrationIds.get(i), extra, pushType, jgIosEnvironment);
+                        jgParams.put("record_id", recordId);
+                        jgParams.put("app_key", appKey);
+                        jgParams.put("title", title);
+                        jgParams.put("content", alert);
+                        jgParams.put("remark", params.getString("remark"));
+                        jgParams.put("registration_id", registrationIds.get(i));
+                        jgParams.put("platform", platform);
+                        jgParams.put("push_type", pushType);
+                        jgParams.put("result", sendResult.getString("message"));
+                        if (sendResult.getIntValue("status") != 0) {
+                            status = "1";
+                        } else {
+                            status = "0";
+                        }
+                        jgParams.put("status", status);
+                        jgList.add(jgParams);
+                        getLogger().info("极光registId推送IOS[" + registrationIds.get(i) + "] result:{}" + sendResult);
+                    }
+
+                    SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+                    simpleMybatisDao.insert("push.jiguang.addPushJiguangRecordList", jgList);
+                }
+            }
+
+        }
+        return result;
+    }
+
+
+    public  JSONObject sendAll(JSONObject params) {
+        JSONObject result = new JSONObject();
+        String alert = params.getString("alert");
+        String appKey = params.getString("app_key");
+        String masterSecret = params.getString("master_secret");
+
+        JPushUtil jpushUtil = new JPushUtil(masterSecret, appKey);
+
+        jpushUtil.sendMessage(alert);
+
+        return result;
+    }
+
+    /**
+     * 获取消息推送统计值
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject getReportReceiveds( String masterSecret, String appKey, String taskIds){
+        JPushUtil jpushUtil = new JPushUtil(masterSecret, appKey);
+        JSONObject sResult = jpushUtil.getReportReceiveds(taskIds);
+        getLogger().info("获取消息推送统计值返回结果：{}", sResult.toJSONString());
+        return sResult;
+    }
+
+    /**
+     * 极光设备绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject bindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        String bindRecordId = UniqueKeyUtil.getKey(new Date());
+        params.put("bind_record_id", bindRecordId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.jiguang.addBindRecord", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 极光设备修改绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject updateJgBindRecord (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        simpleMybatisDao.insert("push.jiguang.updateJgBindRegId", params);
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 极光设备解除绑定regId
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject unbind (Map<String, String> params) {
+        JSONObject result = new JSONObject();
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        params.put("status", "2");
+        simpleMybatisDao.update("push.jiguang.unbind", params);
+
+        result.put("status", "0");
+        result.put("message", "success");
+        return result;
+    }
+
+    /**
+     * 增加极光配置
+     * @param params
+     * @return
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT, timeout = 36000, rollbackFor = Exception.class)
+    public JSONObject addConfig(JSONObject params){
+        JSONObject result = new JSONObject();
+        String configId = UniqueKeyUtil.getKey(new Date());
+
+        params.put("jg_config_id", configId);
+        SimpleMybatisDao simpleMybatisDao = SpringUtil.getBean("simpleMybatisDao", SimpleMybatisDao.class);
+        int count = simpleMybatisDao.insert("push.jiguang.addPushJiguangConfig", params);
+        if(count > 0) {
+            result.put("status", "0");
+            result.put("message", "success");
+        } else {
+            result.put("status", "-1");
+            result.put("message", "jiguang config insert error");
+        }
+        return result;
+    }
+
+}

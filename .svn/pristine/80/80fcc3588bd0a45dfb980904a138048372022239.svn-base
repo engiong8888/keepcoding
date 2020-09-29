@@ -1,0 +1,63 @@
+package cn.gnw.push.consumer.controller;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.consumer.interfaces.PushServiceClient;
+import com.alibaba.fastjson.JSONObject;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 小米推送
+ *
+ * @author: chengzd
+ * @mail
+ * @date: 2019-07-08 15:02
+ */
+@RestController
+@RequestMapping(value = "/push/mi")
+public class MiPushController {
+    private PushServiceClient pushServiceClient = SpringUtil.getBean(PushServiceClient.class);
+
+    /**
+     * 推送
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/send")
+    @ResponseBody
+    private String send(@RequestBody JSONObject rParams){
+        return pushServiceClient.sendMi(rParams);
+    }
+
+    /**
+     * 绑定设备
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/binding")
+    @ResponseBody
+    private String bindingRegId(@RequestBody JSONObject rParams){
+        return pushServiceClient.miBindingRegId(rParams);
+    }
+
+    /**
+     * 解除绑定
+     * @param rParams
+     * @return
+     */
+    @PostMapping("/unbind")
+    @ResponseBody
+    private String unbind(@RequestBody JSONObject rParams){
+        return pushServiceClient.miUnbind(rParams);
+    }
+
+    /**
+     * 更新小米redis缓存
+     * @return
+     */
+    @PostMapping("/update/jg_config")
+    @ResponseBody
+    private String updateRedisMiConfig() {
+        return pushServiceClient.updateRedisMiConfig();
+    }
+
+}

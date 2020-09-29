@@ -1,0 +1,161 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "pa_type",
+    "content",
+    "platform",
+    "push_type",
+    "source"
+  ],
+  "properties": {
+    "pa_type": {
+      "$id": "#/properties/pa_type",
+      "type": "string",
+      "title": "The Pa_type Schema",
+      "default": "",
+      "examples": [
+        "001"
+      ],
+      "maxLength":3,
+      "pattern": "^(.*)$"
+    },
+    "title": {
+      "$id": "#/properties/title",
+      "type": "string",
+      "title": "The Title Schema",
+      "default": "",
+      "examples": [
+        "推送标题"
+      ],
+      "maxLength":64,
+      "pattern": "^(.*)$"
+    },
+    "content": {
+      "$id": "#/properties/content",
+      "type": "string",
+      "title": "The Content Schema",
+      "default": "",
+      "examples": [
+        "推送内容"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "platform": {
+      "$id": "#/properties/platform",
+      "type": "string",
+      "title": "The Platform Schema",
+      "default": "",
+      "examples": [
+        "03"
+      ],
+      "enum": ["01","02", "03"],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "push_type": {
+      "$id": "#/properties/push_type",
+      "type": "string",
+      "title": "The Push_type Schema",
+      "default": "",
+      "enum": ["0","1"],
+      "examples": [
+        "1"
+      ],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "The Source Schema",
+      "default": "",
+      "examples": [
+        "02"
+      ],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "title": {
+      "$id": "#/properties/title",
+      "type": "string",
+      "title": "The Title Schema",
+      "default": "",
+      "examples": [
+        "标题"
+      ],
+      "maxLength":64,
+      "pattern": "^(.*)$"
+    },
+    "devices": {
+      "$id": "#/properties/devices",
+      "type": "array",
+      "title": "The Devices Schema",
+      "items": {
+        "$id": "#/properties/devices/items",
+        "type": "string",
+        "title": "The Items Schema",
+        "default": "",
+        "examples": [
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686",
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686"
+        ],
+        "maxLength": 32,
+        "pattern": "^(.*)$"
+      },
+      "uniqueItems":true,
+      "maxItems": 1000
+    },
+    "alias": {
+      "$id": "#/properties/alias",
+      "type": "array",
+      "title": "The Alias Schema",
+      "items": {
+        "$id": "#/properties/alias/items",
+        "type": "string",
+        "title": "The Items Schema",
+        "default": "",
+        "examples": [
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686",
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686"
+        ],
+        "maxLength": 32,
+        "pattern": "^(.*)$"
+      },
+      "maxItems": 1000
+    },
+    "tags": {
+      "$id": "#/properties/tags",
+      "type": "array",
+      "title": "The Tags Schema",
+      "items": {
+        "$id": "#/properties/tags/items",
+        "type": "string",
+        "title": "The Items Schema",
+        "default": "",
+        "examples": [
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686",
+          "9BE4AB1DC0A80A4A7B82BB552D9F3686"
+        ],
+        "maxLength": 32,
+        "pattern": "^(.*)$"
+      },
+      "maxItems": 1000
+    },
+    "jg_ios_environment": {
+      "$id": "#/properties/jg_ios_environment",
+      "type": "string",
+      "title": "The Jg_ios_environment Schema",
+      "default": "",
+      "examples": [
+        "1"
+      ],
+      "enum": ["0","1"],
+      "maxLength":1,
+      "pattern": "^(.*)$"
+    }
+  }
+}

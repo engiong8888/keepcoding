@@ -1,0 +1,33 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "limit",
+    "pos"
+  ],
+  "properties": {
+    "limit": {
+      "$id": "#/properties/limit",
+      "type": "integer",
+      "title": "The Limit Schema",
+      "default": 0,
+      "examples": [
+        10
+      ],
+      "minimum":-1
+    },
+    "pos": {
+      "$id": "#/properties/pos",
+      "type": "integer",
+      "title": "The Pos Schema",
+      "default": 0,
+      "examples": [
+        0
+      ],
+      "minimum":0
+    }
+  }
+}

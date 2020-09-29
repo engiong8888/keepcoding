@@ -1,0 +1,25 @@
+package cn.gnw.push.api.entity.websocket;
+
+import com.alibaba.fastjson.annotation.JSONField;
+
+import java.util.List;
+
+/**
+ * DeviceStatus 子项
+ * @author: Macro
+ * @mail liqh@txtws.com
+ * @date: 2018-11-21 12:45
+ */
+public class Data {
+
+    @JSONField(name = "device_id")
+    private List<String> deviceId;
+
+    public List<String> getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(List<String> deviceId) {
+        this.deviceId = deviceId;
+    }
+}

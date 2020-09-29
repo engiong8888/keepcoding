@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="push.vivo">
+
+    <!-- vivo推送通知记录表 -->
+    <resultMap id="vivoPushRecord" type="java.util.Map">
+        <result property="record_id" column="record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_id" column="app_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="allias" column="allias" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="title" column="title" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="content" column="content" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="result" column="result" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="send_time" column="send_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="task_id" column="task_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="is_reach" column="is_reach" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="reach_time" column="reach_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- vivo推送绑定记录表 -->
+    <resultMap id="vivoBindRecord" type="java.util.Map">
+        <result property="bind_record_id" column="bind_record_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="device_id" column="device_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="regist_id" column="regist_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="platform" column="platform" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="bind_time" column="bind_time" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="status" column="status" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- vivo配置信息 -->
+    <resultMap id="vivoConfig" type="java.util.Map">
+        <result property="config_id" column="config_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_id" column="app_id" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_key" column="app_key" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="app_secret" column="app_secret" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="enabled" column="enabled" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="source" column="source" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+        <result property="remark" column="remark" typeHandler="cn.gnw.pub.base.db.EmptyStringIfNull"/>
+    </resultMap>
+
+    <!-- 增加vivo配置 -->
+    <insert id="addPushVivoConfig" parameterType="com.alibaba.fastjson.JSONObject">
+        INSERT INTO t_push_vivo_config(config_id, app_id, app_key, app_secret, enabled, source ,remark)
+        VALUES(#{config_id}, #{app_id}, #{app_key}, #{app_secret}, #{enabled}, #{source}, #{remark})
+    </insert>
+
+    <!-- 查询vivo配置 -->
+    <select id="queryPushVivoConfig" parameterType="com.alibaba.fastjson.JSONObject" resultMap="vivoConfig">
+       SELECT * FROM t_push_vivo_config t
+       WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND enabled = #{enabled}
+        </if>
+        order by t.source
+        <if test="limit != NULL">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+   </select>
+
+    <!-- 查询vivo配置总条数 -->
+    <select id="queryPushVivoConfigCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_vivo_config t
+        WHERE 1 = 1
+        <if test="source != NULL and source != ''">
+            AND t.source = #{source}
+        </if>
+        <if test="enabled != NULL and enabled != ''">
+            AND enabled = #{enabled}
+        </if>
+
+    </select>
+
+    <!-- 根据设备号查询注册id -->
+    <select id="queryOneRegIdByDevice" parameterType="java.util.Map" resultType="java.lang.String">
+      SELECT t.regist_id FROM t_push_vivo_bind_record t where 1 = 1 and t.device_id = #{deviceId} and t.status = '1'
+    </select>
+
+    <!-- 根据设备号查询推送服务器注册id列表 -->
+    <select id="queryIdListByDevices" parameterType="java.util.Map" resultType="java.lang.String">
+    SELECT t.regist_id FROM t_push_vivo_bind_record t where 1 = 1
+        <if test="devices != NULL ">
+            AND
+            <foreach item="item" index="index" collection="devices" open="(" separator=" OR " close=")">
+                t.device_id = #{item} and t.status = '1'
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 增加vivo推送记录 -->
+    <insert id="addPushVivoRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_vivo_record(record_id, app_id, regist_id, alias, platform, title, content, result, send_time, status, task_id, remark)
+        VALUES(#{record_id}, #{app_id}, #{regId}, #{alias}, #{platform}, #{title}, #{content}, #{result}, NOW(), #{status}, #{task_id}, #{remark})
+    </insert>
+
+    <!-- 增加vivo推送记录 -->
+    <insert id="addPushVivoRecordList" parameterType="java.util.Map">
+        INSERT INTO t_push_vivo_record(record_id, app_id, regist_id, alias, platform, title, content, result, send_time, status, task_id, remark)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.record_id}, #{item.app_id}, #{item.regist_id}, #{item.alias}, #{item.platform}, #{item.title}, #{item.content}, #{item.result}, NOW(), #{item.status}, #{item.task_id}, #{item.remark})
+        </foreach>
+    </insert>
+
+    <!-- 获取绑定记录 -->
+    <select id="queryBindRecord" parameterType="java.lang.String" resultMap="vivoBindRecord">
+        SELECT * from t_push_vivo_bind_record t
+        where 1 = 1
+        <if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 增加绑定记录 -->
+    <insert id="addBindRecord" parameterType="java.util.Map">
+        INSERT INTO t_push_vivo_bind_record(bind_record_id, device_id, regist_id, platform, bind_time)
+        VALUES(#{bind_record_id}, #{device_id}, #{regist_id}, #{platform}, NOW())
+    </insert>
+
+    <!--重新绑定 更新regist_id-->
+    <update id="updateVivoBindRegId" parameterType="java.util.Map">
+        UPDATE t_push_vivo_bind_record t
+		SET t.regist_id = #{regist_id}, t.status = '1'
+		WHERE t.bind_record_id = #{bind_record_id}
+    </update>
+
+    <!-- 解除绑定关系 -->
+    <update id="unbind" parameterType="java.util.Map">
+        UPDATE t_push_vivo_bind_record t
+		SET t.status = #{status}
+		WHERE t.bind_record_id = #{bind_record_id}
+		<if test="device_id != NULL and device_id != ''">
+            AND t.device_id = #{device_id}
+        </if>
+    </update>
+
+    <!-- 更新回执状态 -->
+    <update id="updateReachReceipt" parameterType="java.util.Map">
+        UPDATE t_push_vivo_record t
+        SET t.is_reach = #{is_reach}, t.reach_time = NOW()
+        WHERE t.task_id = #{task_id}
+        AND (t.regist_id = #{targets} or t.alias = #{targets})
+    </update>
+
+    <!-- 查询vivo推送记录 -->
+    <select id="queryPushVivoRecord" parameterType="com.alibaba.fastjson.JSONObject" resultMap="vivoPushRecord">
+        SELECT *
+        FROM t_push_vivo_record t
+        WHERE 1 = 1
+        <if test="app_id != NULL and app_id != ''">
+            AND t.app_id = #{app_id}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.app_id = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="is_reach != NULL and is_reach != ''">
+            AND t.is_reach = #{is_reach}
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+        ORDER BY t.send_time DESC
+        <if test="limit != NULL and limit != ''">
+            LIMIT #{limit}
+        </if>
+        <if test="pos != NULL and pos != ''">
+            OFFSET #{pos}
+        </if>
+
+    </select>
+
+    <!-- 查询vivo推送记录总条数 -->
+    <select id="queryPushVivoRecordCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_push_vivo_record t
+        WHERE 1 = 1
+        <if test="app_id != NULL and app_id != ''">
+            AND t.app_id = #{app_id}
+        </if>
+        <if test="regist_id != NULL and regist_id != ''">
+            AND t.regist_id = #{regist_id}
+        </if>
+        <if test="alias != NULL and alias != ''">
+            AND t.alias = #{alias}
+        </if>
+        <if test="platform != NULL and platform != ''">
+            AND t.app_id = #{platform}
+        </if>
+        <if test="title != NULL and title != ''">
+            AND t.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="content != NULL and content != ''">
+            AND t.content LIKE CONCAT('%', #{content}, '%')
+        </if>
+
+        <if test="status != NULL and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="is_reach != NULL and is_reach != ''">
+            AND t.is_reach = #{is_reach}
+        </if>
+        <if test="remark != NULL and remark != ''">
+            AND t.remark LIKE CONCAT('%', #{remark}, '%')
+        </if>
+
+    </select>
+
+</mapper>

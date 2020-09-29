@@ -1,0 +1,331 @@
+package cn.gnw.push.api.utils.huaweipush;
+
+import cn.gnw.pub.base.utils.SpringUtil;
+import cn.gnw.push.api.entity.Constants;
+import cn.gnw.push.api.entity.huaweipush.HuweiApiConfig;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.text.MessageFormat;
+
+/**
+ * 华为推送工具类
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-25 9:28
+ */
+public class HuweiPushUtil {
+
+    public HuweiPushUtil () {}
+
+    private static class HuweiPushUtilManageHolder {
+        private static HuweiPushUtil instance = new HuweiPushUtil();
+    }
+
+    public static HuweiPushUtil getInstance() {
+        return HuweiPushUtilManageHolder.instance;
+    }
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static String appId = "";
+    private static String appSecret = "";
+    private static String appPkg = "";
+
+    public HuweiPushUtil(String appId, String appSecret) {
+        this.appId = appId;
+        this.appSecret = appSecret;
+    }
+
+    public HuweiPushUtil(String appId, String appSecret, String appPkg) {
+        this.appId = appId;
+        this.appSecret = appSecret;
+        this.appPkg = appPkg;
+    }
+
+    /**
+     * 获取token
+     * @return
+     */
+    private JSONObject refreshToken()
+    {
+        JSONObject result = new JSONObject();
+        String token;
+        Long token_expired_time;
+        try {
+            String msgBody = MessageFormat.format("grant_type=client_credentials&client_secret={0}&client_id={1}",
+                    URLEncoder.encode(appSecret, Constants.API_CHARSET), appId);
+            String getTokenResult = HttpClientUtil.httpPost(HuweiApiConfig.ACCESS_TOKEN, msgBody);
+
+            if(null != getTokenResult) {
+                try {
+                    JSONObject obj = JSONObject.parseObject(getTokenResult);
+                    token = obj.getString("access_token");
+                    token_expired_time = System.currentTimeMillis() + obj.getLong("expires_in") * 1000;
+                    System.out.println("过期时间" + token_expired_time);
+                    result.put("token", token);
+                    result.put("token_expired_time", obj.getLong("expires_in"));
+                } catch (JSONException j) {
+                    logger.info(new StringBuffer("获取华为Access_Token失败：").append(getTokenResult).toString());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("appSecret转编码出错!");
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+
+
+    public String getAccessToken () {
+        JSONObject result = new JSONObject();
+        String tokenStr = getAccessTokenFromRedis();
+        int expireTime = 0;
+
+        System.out.println("getAccessTokenFromRedis(){} "+tokenStr);
+        if(tokenStr == null){
+            result = refreshToken();
+            System.out.println("refreshToken() {} "+result);
+            tokenStr = result.getString("token");
+            expireTime = result.getInteger("token_expired_time");
+            setAccessTokenToRedis(tokenStr, expireTime);
+        }
+        return tokenStr;
+    }
+
+    /**
+     * redis获取token
+     * @return
+     */
+    private String getAccessTokenFromRedis() {
+        ShardedJedisPool shardedJedisPool = (ShardedJedisPool) SpringUtil.getBean("shardedJedisPool");
+        ShardedJedis shardedJedis = null;
+        String tokenStr = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            StringBuffer key = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(Constants.REDIS_HUAWEI_AUTH_TOKEN);
+            tokenStr = shardedJedis.get(key.toString());
+            logger.info(new StringBuffer("获取华为access_token[Redis][key]{").append(key)
+                    .append("}[token]{").append(tokenStr).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+        return tokenStr;
+    }
+
+    /**
+     * 设置token到redis
+     * @param tokenStr
+     */
+    private void setAccessTokenToRedis(String tokenStr, int expireTime) {
+        ShardedJedisPool shardedJedisPool = (ShardedJedisPool) SpringUtil.getBean("shardedJedisPool");
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            StringBuffer key = new StringBuffer(Constants.GNW_PUSH_REDIS)
+                    .append(":").append(Constants.REDIS_HUAWEI_AUTH_TOKEN);
+            shardedJedis.set(key.toString(), tokenStr);
+            shardedJedis.expire(key.toString(), expireTime);
+            logger.info(new StringBuffer("设置华为access_token[Redis][key]{").append(key)
+                    .append("}[token]{").append(tokenStr).append("}[expireTime]{").append(expireTime).append("}").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        } finally {
+            if(shardedJedis != null) {
+                shardedJedis.close();
+            }
+        }
+    }
+
+    /**
+     *  推送消息（msg_type:1 透传异步消息 3 系统通知栏异步消息）
+     * @param deviceTokens  目标设备
+     * @param title 推送标题
+     * @param content   推送内容
+     * @param actionType    点击弹窗后的行为
+     * @param msgType   消息类型1透传2.通知
+     * @param biTag  消息标签，如果带了这个标签，会在回执中推送给CP用于检测某种类型消息的到达率和状态
+     * @throws IOException
+     */
+    public JSONObject sendMessage (JSONArray deviceTokens, String title, String content, String actionType, String paramIntent, String paramUrl, String msgType, String biTag, JSONArray customize, String appPkg, String token) throws IOException {
+
+        JSONObject body = new JSONObject();//仅通知栏消息需要设置标题和内容，透传消息key和value为用户自定义
+
+        body.put("title", title);//消息标题
+        body.put("content", content);//消息内容体
+
+        JSONObject param = new JSONObject();
+        param.put("appPkgName", appPkg);//定义需要打开的appPkgName
+        param.put("intent", paramIntent);//消息点击动作参数
+        param.put("url", paramUrl);//消息点击动作参数
+
+        JSONObject action = new JSONObject();
+        action.put("type", actionType);//类型3为打开APP，其他行为请参考接口文档设置
+        action.put("param", param);//消息点击动作参数
+
+
+        JSONObject msg = new JSONObject();
+        msg.put("type", msgType);//3: 通知栏消息，异步透传消息请根据接口文档设置
+        msg.put("action", action);//消息点击动作
+        msg.put("body", body);//通知栏消息body内容
+
+        JSONObject ext = new JSONObject();//扩展信息，含BI消息统计，特定展示风格，消息折叠。
+        ext.put("biTag", biTag);//设置消息标签，如果带了这个标签，会在回执中推送给CP用于检测某种类型消息的到达率和状态
+//        ext.put("icon", "http://pic.qiantucdn.com/58pic/12/38/18/13758PIC4GV.jpg");//自定义推送消息在通知栏的图标,value为一个公网可以访问的URL
+        ext.put("customize", customize);
+
+        JSONObject hps = new JSONObject();//华为PUSH消息总结构体
+        hps.put("msg", msg);
+        hps.put("ext", ext);
+
+        JSONObject payload = new JSONObject();
+        payload.put("hps", hps);
+
+        String postBody = MessageFormat.format(
+                "access_token={0}&nsp_svc={1}&nsp_ts={2}&device_token_list={3}&payload={4}",
+                URLEncoder.encode(token,"UTF-8"),
+                URLEncoder.encode(HuweiApiConfig.NSP_SVC,Constants.API_CHARSET),
+                URLEncoder.encode(String.valueOf(System.currentTimeMillis() / 1000),Constants.API_CHARSET),
+                URLEncoder.encode(deviceTokens.toString(),Constants.API_CHARSET),
+                URLEncoder.encode(payload.toString(),Constants.API_CHARSET));
+
+        logger.info(new StringBuffer("转码后的请求body[Redis][key]{").append("postBody")
+                .append("}[content]{").append(postBody).append("}").toString());
+
+        String url = HuweiApiConfig.PUSH_SEND.replace("NSP_CTX", URLEncoder.encode("{\"ver\":\"1\", \"appId\":\"" + this.appId + "\"}", Constants.API_CHARSET));
+        String response = HttpClientUtil.httpPost(url, postBody);
+
+        JSONObject obj = JSONObject.parseObject(response);
+        return obj;
+    }
+
+
+    /**
+     * 推送消息（msg_type:1 透传异步消息）
+     * @param deviceTokens
+     * @param msgBody
+     * @param token
+     * @return
+     * @throws IOException
+     */
+    private String sendTransMessage (JSONArray deviceTokens, String msgBody, String token) throws IOException {
+//        JSONObject body = new JSONObject();
+//        body.put("key1", "value1");//透传消息自定义body内容
+//        body.put("key2", "value2");//透传消息自定义body内容
+//        body.put("key3", "value3");//透传消息自定义body内容
+
+        JSONObject msg = new JSONObject();
+        msg.put("type", 1);//1: 透传异步消息，通知栏消息请根据接口文档设置
+        msg.put("body", msgBody);//body内容不一定是JSON，可以是String，若为JSON需要转化为String发送
+
+        JSONObject hps = new JSONObject();//华为PUSH消息总结构体
+        hps.put("msg", msg);
+
+        JSONObject payload = new JSONObject();
+        payload.put("hps", hps);
+
+        String postBody = MessageFormat.format(
+                "access_token={0}&nsp_svc={1}&nsp_ts={2}&device_token_list={3}&payload={4}",
+                URLEncoder.encode(token,"UTF-8"),
+                URLEncoder.encode(HuweiApiConfig.NSP_SVC,"UTF-8"),
+                URLEncoder.encode(String.valueOf(System.currentTimeMillis() / 1000),"UTF-8"),
+                URLEncoder.encode(deviceTokens.toString(),"UTF-8"),
+                URLEncoder.encode(payload.toString(),"UTF-8"));
+
+        String url = HuweiApiConfig.PUSH_SEND.replace("NSP_CTX", URLEncoder.encode("{\"ver\":\"1\", \"appId\":\"" + this.appId + "\"}", Constants.API_CHARSET));
+        String response = HttpClientUtil.httpPost(url, postBody);
+        JSONObject obj = JSONObject.parseObject(response);
+        return obj.toJSONString();
+    }
+
+//    public static void main (String[] args) throws IOException {
+//        String appId = "100467925";
+//        String appSecret = "22250ca41dde9a76ffc1c99379375ec1";
+//        HuweiPushUtil huaweiUtil = new HuweiPushUtil(appId, appSecret);
+//
+//       JSONObject json =  huaweiUtil.refreshToken();  //更新token
+//
+//        String tokenStr = json.getString("token");
+//        int expireTime = json.getInteger("token_expired_time");
+//        System.out.println("   "+tokenStr+"   "+expireTime);
+//
+//        String devToken = "0867707020039881300002598100CN01";
+//        JSONArray deviceTokens = new JSONArray();//目标设备Token
+//        deviceTokens.add(devToken);
+//
+//        String title = "华为推送title";
+//        String content = "华为消息推送内容";
+//        String actionType = "1";
+//        String paramIntent = "111";
+//        String paramUrl = "http://www.baidu.com";
+//        String msgType = "3";
+//
+//        JSONObject response = huaweiUtil.sendMessage(deviceTokens, title, content,  actionType,paramIntent, paramUrl, msgType, null ,null, "com.gnw.huawei.hmssdk", tokenStr);
+//        System.out.println(response.toJSONString());
+//
+//
+//    }
+
+//    public static void main (String[] args) throws IOException {
+//        String appId = "100512721";
+//        String appSecret = "354a9c846ccf838649f66ae6c57ae79e";
+//        HuweiPushUtil huaweiUtil = new HuweiPushUtil(appId, appSecret);
+//        JSONObject json =  huaweiUtil.refreshToken();  //更新token
+//        String tokenStr = json.getString("token");
+//        System.out.println("token======="+tokenStr);
+//
+//        String devToken = "ADg680uUYiLDOf47-0Z0HOFwnWYDqKIvUcOX_OS1rIF6syAabhaaeklVSLZgopBXTkuRIy-s3uVGjuY4wUgciQ3tvdFGVCAIKCHe-_ZtiyedZ6cyIaIqizoKwbq5cFpiDQ";
+//        JSONArray deviceTokens = new JSONArray();//目标设备Token
+//        deviceTokens.add(devToken);
+//
+//        String title = "华为推送title";
+//        String content = "华为消息推送内容";
+//        String actionType = "1";
+//        String paramIntent = "111";
+//        String paramUrl = "http://www.baidu.com";
+//        String msgType = "3";
+//
+//        JSONObject response = huaweiUtil.sendMessage(deviceTokens, title, content,  actionType,paramIntent, paramUrl, msgType, null ,null, "com.gwchina.lssw.gelei.child", tokenStr);
+//        System.out.println(response.toJSONString());
+//
+//    }
+
+//    public static void  main (String[] args) {
+//       String timeStr = "2018-11-19 10:06:10";
+//        TimeZone tz = TimeZone.getTimeZone("Asia/Shanghai");
+//        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
+//        df.setTimeZone(tz);
+//        Date date = new Date();
+//        String nowAsISO = df.format(date);
+//        System.out.println(nowAsISO);
+
+//        Date date = getNextDay(new Date());
+//        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
+//        String nowAsISO = df.format(date);
+//        System.out.println(nowAsISO);
+//    }
+//
+//    public static Date getNextDay(Date date) {
+//        Calendar calendar = Calendar.getInstance();
+//        calendar.setTime(date);
+//        calendar.add(Calendar.DAY_OF_MONTH, +1);//+1今天的时间加一天
+//        date = calendar.getTime();
+//        return date;
+//    }
+}

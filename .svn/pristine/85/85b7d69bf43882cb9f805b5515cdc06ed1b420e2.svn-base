@@ -1,0 +1,36 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "vivo_push_type",
+    "title"
+  ],
+  "properties": {
+    "vivo_push_type": {
+      "$id": "#/properties/vivo_push_type",
+      "type": "string",
+      "title": "The Vivo_push_type Schema",
+      "default": "",
+      "examples": [
+        "01"
+      ],
+      "enum": ["01", "02", "03"],
+      "maxLength":2,
+      "pattern": "^(.*)$"
+    },
+    "title": {
+      "$id": "#/properties/title",
+      "type": "string",
+      "title": "The Title Schema",
+      "default": "",
+      "examples": [
+        "标题"
+      ],
+      "maxLength":20,
+      "pattern": "^(.*)$"
+    }
+  }
+}

@@ -1,0 +1,816 @@
+package cn.gnw.push.api.utils;
+
+import cn.jiguang.common.ClientConfig;
+import cn.jiguang.common.resp.APIConnectionException;
+import cn.jiguang.common.resp.APIRequestException;
+import cn.jpush.api.JPushClient;
+import cn.jpush.api.push.PushResult;
+import cn.jpush.api.push.model.Message;
+import cn.jpush.api.push.model.Options;
+import cn.jpush.api.push.model.Platform;
+import cn.jpush.api.push.model.PushPayload;
+import cn.jpush.api.push.model.audience.Audience;
+import cn.jpush.api.push.model.notification.IosNotification;
+import cn.jpush.api.push.model.notification.Notification;
+import cn.jpush.api.report.ReceivedsResult;
+import com.alibaba.fastjson.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 极光推送工具类
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-09-21 16:22
+ */
+public class JPushUtil {
+
+    //推送类型，通知和消息（透传）
+    private final static String TYPE_NOTICE = "0";          //通知
+    private final static String TYPE_MESSAGE = "1";         //透传
+
+
+    private boolean AVAILABLE = false; //true-推送生产环境 false-推送开发环境（测试使用参数）
+    private String master_secret = null;
+    private String app_key = null;
+
+    public JPushUtil (String master_secret, String app_key) {
+        this.master_secret = master_secret;
+        this.app_key = app_key;
+    }
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+
+   // private static JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+
+    private String smsHost = null;
+    private String uid = null;
+    private String pwd = null;
+
+    /**
+     * 广播推送
+     * @param alert
+     * @date 2018/09/25
+     */
+    public JSONObject sendMessage(String alert){
+        JSONObject jResult = new JSONObject();
+
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.all())
+                    .setAudience(Audience.all())
+                    .setNotification(Notification.alert(alert)).build();
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("广播推送：{} "+ result.toString());
+            if(result.isResultOK()){
+                jResult.put("status", 0);
+                jResult.put("message", "success");
+                jResult.put("data", result.toString());
+            } else {
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+                jResult.put("data", result.toString());
+            }
+
+        } catch (APIConnectionException e) {
+            e.printStackTrace();
+            logger.warn("sendMessage APIConnectionException: " + e.getMessage());
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+
+        } catch (APIRequestException e) {
+            e.printStackTrace();
+            logger.warn("sendMessage APIRequestException: " + e.getMessage());
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 带标题的广播推送
+     * @param title
+     * @param alert
+     */
+    public void sendMessage(String title, String alert, String jgIosEnvironment){
+        if(StringUtils.isEmpty(title)){
+            sendMessage(alert);
+        }else{
+
+            sendMessageForAndroid(title, alert, TYPE_NOTICE);
+            sendMessageForIOS(title, alert, TYPE_MESSAGE, jgIosEnvironment);
+
+        }
+    }
+
+    /**
+     * 定向广播推送
+     * @param title
+     * @param alert
+     */
+//    public void sendMessage(String title, String alert, List<String> alias, Map<String,String> extra){
+//        if(StringUtils.isEmpty(title)) {
+//            sendMessage(alert);
+//        } else if (StringUtils.isEmpty(alias)) {
+//            sendMessageForAndroid(title, alert);
+//            sendMessageForIOS(title, alert);
+//        } else {
+//            sendMessageByAliasForAndroid(title, alert, alias, extra);
+//            sendMessageByAliasForIOS(title, alert, alias, extra);
+//
+//        }
+//    }
+
+    /**
+     * 推送到安卓
+     * @param title 标题
+     * @param alert 推送内容
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageForAndroid(String title, String alert, String pushType){
+        JSONObject jResult = new JSONObject();
+
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.all())
+                        .setNotification(Notification.android(alert, title, null))
+                        .build();
+            }else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.android())
+                    .setAudience(Audience.all())
+                    .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                    .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到安卓(带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", "success");
+            } else {
+                logger.warn("sendMessageForAndroid_1" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_1 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_1 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 推送到安卓(alias)
+     * @param title 标题
+     * @param alert 推送内容
+     * @param alias 别名
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByAliasForAndroid(String title, String alert, List<String> alias, Map<String,String> extras, String pushType){
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.android())
+                    .setAudience(Audience.alias(alias))
+                    .setNotification(Notification.android(alert, title, extras)).build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.alias(alias))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到安卓(根据别名alias带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", "success");
+            } else {
+                logger.warn("sendMessageForAndroid_2" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_2 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_2 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 推送到安卓(tag)
+     * @param title 标题
+     * @param alert 推送内容
+     * @param tags tag
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByTagsForAndroid(String title, String alert, List<String> tags, Map<String,String> extras, String pushType){
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.android())
+                    .setAudience(Audience.tag(tags))
+                    .setNotification(Notification.android(alert, title, extras)).build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.tag(tags))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                .build();
+            }
+
+            PushResult result = jpushClient.sendPush(pushPayload);
+
+            logger.info("推送到安卓(根据标签tag带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", "success");
+            } else {
+                logger.warn("sendMessageForAndroid_3" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_3 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_3 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+    /**
+     * 推送到安卓(registration_id)
+     * @param title 标题
+     * @param alert 推送内容
+     * @param registrationIds registration_id
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByRegistrationIdsForAndroid(String title, String alert, List<String> registrationIds, Map<String,String> extras, String pushType){
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.registrationId(registrationIds))
+                        .setNotification(Notification.android(alert, title, extras)).build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.registrationId(registrationIds))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("sendMessageForAndroid_4" + result);
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", "success");
+            } else {
+                logger.warn("sendMessageForAndroid_4" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_4 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_4 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 推送到安卓(registration_id)
+     * @param title 标题
+     * @param alert 推送内容
+     * @param registrationId registration_id
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByRegistrationIdForAndroid(String title, String alert, String registrationId, Map<String,String> extras, String pushType){
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.android())
+                    .setAudience(Audience.registrationId(registrationId))
+                    .setNotification(Notification.android(alert, title, extras)).build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.registrationId(registrationId))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("sendMessageForAndroid_registrationId" + result);
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForAndroid_registrationId" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_registrationId APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForAndroid_registrationId APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+
+    /**
+     * 推送到IOS
+     * @param title 标题
+     * @param alert 内容
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageForIOS(String title, String alert, String pushType, String jgIosEnvironment){
+        if("1".equals(jgIosEnvironment)){
+            AVAILABLE = true;
+        }
+        System.out.println("|sendMessageForIOS|");
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.ios())
+                    .setAudience(Audience.all())
+                    .setNotification(Notification.newBuilder()
+                            .addPlatformNotification(IosNotification.newBuilder()
+                                    .setAlert(title)
+                                    .autoBadge()
+                                    .setSound("happy")
+                                    .build())
+                            .build())
+                    .setMessage(Message.content(alert))
+                    .setOptions(Options.newBuilder()
+                            .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+                            .build())
+                    .build();
+
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.all())
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+                                .build())
+                        .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到ios(带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForIOS_1" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_1 APIConnectionException: " + e.getMessage());
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_1 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+
+    /**
+     * 推送到IOS(alias)
+     * @param title
+     * @param alert
+     * @param alias
+     * @param extras
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByAliasForIOS(String title, String alert, List<String> alias, Map<String, String> extras, String pushType, String jgIosEnvironment){
+        if("1".equals(jgIosEnvironment)){
+            AVAILABLE = true;
+        }
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                    pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.alias(alias))
+                        .setNotification(Notification.newBuilder()
+                                .addPlatformNotification(IosNotification.newBuilder()
+                                        .setAlert(title)
+                                        .addExtras(extras)
+                                        .setContentAvailable(true)  //是否在锁屏状态下接收
+                                        .autoBadge()
+                                        .setSound("happy")
+                                        .build())
+                                .build())
+                        .setMessage(Message.content(alert))
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+                              //  .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                                .build())
+                        .build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.alias(alias))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+                                //.setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                                .build())
+                        .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到ios(根据别名alias带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForIOS_2" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_2 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_2 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 推送到IOS(tags)
+     * @param title
+     * @param alert
+     * @param tags
+     * @param extras
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public void sendMessageByTagsForIOS(String title, String alert, List<String> tags, Map<String, String> extras, String pushType, String jgIosEnvironment){
+        if("1".equals(jgIosEnvironment)){
+            AVAILABLE = true;
+        }
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.ios())
+                    .setAudience(Audience.tag(tags))
+                    .setNotification(Notification.newBuilder()
+                            .addPlatformNotification(IosNotification.newBuilder()
+                                    .setAlert(alert)
+                                    .addExtras(extras)
+                                    .setContentAvailable(true)  //是否在锁屏状态下接收
+                                    .autoBadge()
+                                    .setSound("happy")
+                                    .build())
+                            .build())
+                    .setMessage(Message.content(alert))
+                    .setOptions(Options.newBuilder()
+                            .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                            .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                            .build())
+                    .build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.tag(tags))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                                .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                                .build())
+                        .build();
+            }
+
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到ios(根据标签tag带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForIOS_3" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_3 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_3 APIRequestException: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 推送到IOS(registration_id数组)
+     * @param title
+     * @param alert
+     * @param registrationIds
+     * @param extras
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public void sendMessageByRegistrationIdForIOS(String title, String alert, List<String> registrationIds, Map<String, String> extras, String pushType, String jgIosEnvironment){
+        if("1".equals(jgIosEnvironment)){
+            AVAILABLE = true;
+        }
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.ios())
+                    .setAudience(Audience.registrationId(registrationIds))
+                    .setNotification(Notification.newBuilder()
+                            .addPlatformNotification(IosNotification.newBuilder()
+                                    .setAlert(alert)
+                                    .addExtras(extras)
+                                    .setContentAvailable(true)  //是否在锁屏状态下接收
+                                    .autoBadge()
+                                    .setSound("happy")
+                                    .build())
+                            .build())
+                    .setMessage(Message.content(alert))
+                    .setOptions(Options.newBuilder()
+                            .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                            .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                            .build())
+                    .build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.registrationId(registrationIds))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                                .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                                .build())
+                        .build();
+            }
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("sendMessageForIOS_4" + result);
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForIOS_4" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_4 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_4 APIRequestException: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 推送到IOS(registration_id)
+     * @param title
+     * @param alert
+     * @param registrationId
+     * @param extras
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+    public JSONObject sendMessageByRegistrationIdForIOS(String title, String alert, String registrationId, Map<String, String> extras, String pushType, String jgIosEnvironment){
+        if("1".equals(jgIosEnvironment)){
+            AVAILABLE = true;
+        }
+        JSONObject jResult = new JSONObject();
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try {
+            PushPayload pushPayload = null;
+            if (TYPE_NOTICE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                    .setPlatform(Platform.ios())
+                    .setAudience(Audience.registrationId(registrationId))
+                    .setNotification(Notification.newBuilder()
+                            .addPlatformNotification(IosNotification.newBuilder()
+                                    .setAlert(alert)
+                                    .addExtras(extras)
+                                    .setContentAvailable(true)  //是否在锁屏状态下接收
+                                    .autoBadge()
+                                    .setSound("happy")
+                                    .build())
+                            .build())
+                    .setMessage(Message.content(alert))
+                    .setOptions(Options.newBuilder()
+                            .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                            .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                            .build())
+                    .build();
+            } else if(TYPE_MESSAGE.equals(pushType)) {
+                pushPayload = PushPayload.newBuilder()
+                        .setPlatform(Platform.ios())
+                        .setAudience(Audience.registrationId(registrationId))
+                        .setMessage(Message.newBuilder().setTitle(title).setMsgContent(alert).build())
+                        .setOptions(Options.newBuilder()
+                                .setApnsProduction(AVAILABLE)   //true-推送生产环境 false-推送开发环境（测试使用参数）
+//                            .setTimeToLive(90)   //指定本推送的离线保存时长(单位：秒)，如果不传此字段则默认保存一天，最多指定保留十天
+                                .build())
+                        .build();
+            }
+
+            PushResult result = jpushClient.sendPush(pushPayload);
+            logger.info("推送到ios(根据注册id带标题内容)：{} "+ result.toString());
+            if(result.isResultOK()) {
+                jResult.put("status", 0);
+                jResult.put("message", result.toString());
+            } else {
+                logger.warn("sendMessageForIOS_5" + result.error);
+                jResult.put("status", -1);
+                jResult.put("message", result.error);
+            }
+
+        } catch (APIConnectionException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_5 APIConnectionException: " + e.getMessage());
+
+        } catch (APIRequestException e) {
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.warn("sendMessageForIOS_5 APIRequestException: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+    /**
+     * 推送到IOS
+     * @param title 标题
+     * @param alert 推送内容
+     * @param alias 别名
+     * @param pushType 推送类型，0：通知 1：透传
+     */
+//    public void sendMessageForIOS(String title, String alert, String alias){
+//        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+//        try {
+//
+//            PushResult result = jpushClient.sendIosNotificationWithAlias(IosAlert.newBuilder().setTitleAndBody(title, null, alert).build(), null, alias);
+//            logger.info("sendMessageForIOS_5" + result);
+//        } catch (APIConnectionException e) {
+//            e.printStackTrace();
+//            logger.error("sendMessageForIOS_5 APIConnectionException: " + e.getMessage());
+//
+//        } catch (APIRequestException e) {
+//            e.printStackTrace();
+//            logger.error("sendMessageForIOS_5 APIRequestException: " + e.getMessage());
+//        }
+//    }
+
+    /**
+     * 获取送达统计数据
+     *  @param msgIds msg_id
+     */
+    public JSONObject getReportReceiveds(String msgIds){
+        JSONObject jResult = new JSONObject();
+
+        JPushClient jpushClient = new JPushClient(this.master_secret, this.app_key, null, ClientConfig.getInstance());
+        try{
+            ReceivedsResult result = jpushClient.getReportReceiveds(msgIds);
+            jResult.put("status", 0);
+            jResult.put("message", "success");
+            jResult.put("data", result);
+            logger.info("report_receiveds: {} " + result);
+        }catch(Exception e){
+            e.printStackTrace();
+            jResult.put("status", -1);
+            jResult.put("message", e.getMessage());
+            logger.error("report_receiveds: " + e.getMessage());
+        }
+        return jResult;
+    }
+
+
+//    public static void main (String[] args){
+//        JPushUtil jpUtil = new JPushUtil("fc1d533126ec7ca07acf425c", "23e3c1dd1c86c468158fd565");
+//        String  title = "这是推送的title10";
+//        String alert = "这是一条推送消息10";
+//        String alias = "testz";
+//        String registId = "13065ffa4e207f4a174";
+//        String registId2 = "13065ffa4e207f4a175";
+//        List<String> regIdList = new ArrayList<>();
+//        regIdList.add(registId);
+//        regIdList.add(registId2);
+//        List<String> tag = new ArrayList<>();
+//        tag.add("ggg");
+//        tag.add("111");
+//        Map<String,String> map = new HashMap<String,String>();
+//        map.put("test", "t1");
+//        JSONObject s = jpUtil.sendMessageByRegistrationIdForAndroid(title,alert,registId,null,"0");
+
+//        JSONObject s = jpUtil.sendMessageByRegistrationIdsForAndroid(title, alert, regIdList, null, "0");
+
+//        JSONObject s = jpUtil.sendMessage(alert);
+//        System.out.println(s.toJSONString());
+//        String sData = s.getString("data");
+//        JSONObject jData = JSON.parseObject(sData);
+//        String msgId = jData.getString("msg_id");
+//        System.out.println(msgId);
+
+//        String msgId = "3051311825";
+//        jpUtil.getReportReceiveds(msgId);
+//        System.out.println();
+//    }
+
+//    public static void main (String[] args){
+//
+//          JPushUtil jpUtil = new JPushUtil("0b14c81c97e32b3b73d315d3", "ce361e9e54efec2a699b1351");
+//        String  title = "这是推送的title10";
+//        String alert = "这是一条推送消息10";
+//        String alias = "testz";
+//        String registId = "100d8559096cef5cdc6";
+//        String registId2 = "13065ffa4e207f4a175";
+//        List<String> regIdList = new ArrayList<>();
+//        regIdList.add(registId);
+//        regIdList.add(registId2);
+//        List<String> tag = new ArrayList<>();
+//        tag.add("ggg");
+//        tag.add("111");
+//        Map<String,String> map = new HashMap<String,String>();
+//        map.put("test", "t1");
+//        JSONObject s = jpUtil.sendMessageByRegistrationIdForAndroid(title,alert,registId,null,"0");
+//
+//    }
+}

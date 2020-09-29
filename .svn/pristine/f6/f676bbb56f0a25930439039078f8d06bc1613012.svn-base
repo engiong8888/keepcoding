@@ -1,0 +1,17 @@
+var _alipay_trade_type = {
+    "web":"电脑网站",
+    "wap":"手机网站",
+    "app":"APP支付",
+    "precreate":"扫码预支付"
+};
+
+var _alipay_order_status = {
+	"0":"待支付",
+	"1":"已支付",
+	"2":"已关闭",
+	"3":"已退款"
+};
+
+var _platform = {
+    "green_box":"格雷盒子"
+};

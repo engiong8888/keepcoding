@@ -1,0 +1,58 @@
+package java.cn.gnw.push.manager.filter;
+
+import cn.gnw.pub.base.utils.StringUtil;
+import cn.gnw.push.api.entity.Constants;
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+
+/**
+ * Session 过滤器
+ * @author: shemg
+ * @mail xuys@txtws.com
+ * @date: 2018-07-05 17:05
+ */
+public class SessionFilter implements Filter {
+
+	@Override
+	public void init(FilterConfig filterConfig) throws ServletException {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void doFilter(ServletRequest sreq, ServletResponse sresp, FilterChain filterChain) throws IOException, ServletException {
+		HttpServletRequest request = (HttpServletRequest) sreq;
+		HttpServletResponse response = (HttpServletResponse) sresp;
+		HttpSession session = request.getSession(true);
+
+		if(session.getAttribute(Constants.SESSION_LOGON_USER) == null) {
+			boolean isLogin = request.getRequestURI().endsWith("/pushman/system/login");
+			boolean isLogout = request.getRequestURI().endsWith("/pushman/system/logout");
+			boolean isNoSession = request.getRequestURI().endsWith("/pushman/system/nosession");
+			boolean isCheck = request.getRequestURI().endsWith("/pushman/system/login/check");
+			if(!isLogin && !isLogout && !isNoSession && !isCheck) {
+				String requestType = request.getHeader("X-Requested-With");
+				if(!StringUtil.isBlank(requestType) && requestType.equalsIgnoreCase("XMLHttpRequest")) {
+					response.setHeader("sessionstatus", "timeout");
+					response.sendError(518, "session timeout.");
+					return;
+				} else {
+					response.sendRedirect(request.getContextPath() + "/pushman/system/nosession");
+					return;
+				}
+			}
+		}
+		filterChain.doFilter(sreq, sresp);
+	}
+
+	@Override
+	public void destroy() {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

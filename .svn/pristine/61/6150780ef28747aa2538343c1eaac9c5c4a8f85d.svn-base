@@ -1,0 +1,112 @@
+package cn.gnw.push.api.utils.vivopush;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
+import java.nio.charset.Charset;
+
+/**
+ * vivo http请求
+ *
+ * @author: chengzd
+ * @mail chengzd@txtws.com
+ * @date: 2018-10-24 16:01
+ */
+public class HttpClientUtil {
+
+    /**
+     *发送post请求
+     * @param url
+     * @param
+     * @return
+     */
+    public static String executePost(String url, String parameters)
+    {
+        CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
+        HttpPost method =  new HttpPost(url);
+        String body = null;
+        if(method != null & parameters != null && !"".equals(parameters.trim()))
+        {
+            try{
+                method.addHeader("Content-type","application/json; charset=utf-8");
+                method.setHeader("Accept", "application/json");
+                method.setEntity(new StringEntity(parameters, Charset.forName("UTF-8")));
+                HttpResponse response = closeableHttpClient.execute(method);
+                int statusCode = response.getStatusLine().getStatusCode();
+                if(statusCode != HttpStatus.SC_OK)
+                {
+                    System.out.println();
+                    System.out.println(response.getStatusLine());
+                }
+                //获取响应数据1
+                body = EntityUtils.toString(response.getEntity());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return body;
+    }
+
+    public static String executePost(String authToken, String url, String parameters)
+    {
+        CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
+        HttpPost method =  new HttpPost(url);
+        String body = null;
+        if(method != null & parameters != null && !"".equals(parameters.trim()))
+        {
+            try{
+                method.addHeader("Content-type","application/json; charset=utf-8");
+                method.setHeader("Accept", "application/json");
+                method.setHeader("authToken", authToken);
+                method.setEntity(new StringEntity(parameters, Charset.forName("UTF-8")));
+                HttpResponse response = closeableHttpClient.execute(method);
+                int statusCode = response.getStatusLine().getStatusCode();
+                if(statusCode != HttpStatus.SC_OK)
+                {
+                    System.out.println();
+                    System.out.println(response.getStatusLine());
+                }
+                //获取响应数据1
+                body = EntityUtils.toString(response.getEntity());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return body;
+    }
+
+    public static String executeGet(String authToken, String url)
+    {
+        CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
+        HttpGet method =  new HttpGet(url);
+        String body = null;
+        if(method != null)
+        {
+            try{
+                method.addHeader("Content-type","application/json; charset=utf-8");
+                method.setHeader("Accept", "application/json");
+                method.setHeader("authToken", authToken);
+//                method.setEntity(new StringEntity(parameters, Charset.forName("UTF-8")));
+                HttpResponse response = closeableHttpClient.execute(method);
+                int statusCode = response.getStatusLine().getStatusCode();
+                if(statusCode != HttpStatus.SC_OK)
+                {
+                    System.out.println();
+                    System.out.println(response.getStatusLine());
+                }
+                //获取响应数据1
+                body = EntityUtils.toString(response.getEntity());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return body;
+    }
+}

@@ -1,0 +1,13 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<link rel="stylesheet" th:href="@{/lib/jqChart/css/jquery.jqChart.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/lib/jqChart/css/jquery.jqRangeSlider.css}" type="text/css" />
+<link rel="stylesheet" th:href="@{/lib/jqChart/themes/smoothness/jquery-ui-1.8.21.css}" type="text/css" />
+<script th:src="@{/lib/jqChart/js/jquery.mousewheel.js}"></script>
+<script th:src="@{/lib/jqChart/js/jquery.jqChart.min.js}"></script>
+<script th:src="@{/lib/jqChart/js/jquery.jqRangeSlider.min.js}"></script>
+<!--[if IE]>
+<script th:src="@{/lib/jqChart/js/excanvas.js}"></script>
+<![endif]-->
+</html>
+
+
