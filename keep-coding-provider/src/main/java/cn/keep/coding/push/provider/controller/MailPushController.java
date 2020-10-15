@@ -15,9 +15,10 @@ import java.util.Map;
 
 /**
  * 邮件推送
- * @author: chengzd
- * @mail    chengzd@txtws.com
- * @date: 2018-09-19 8:59
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @RestController
 @RequestMapping(value = "/push/mail")

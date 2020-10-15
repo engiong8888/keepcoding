@@ -15,6 +15,13 @@ import java.util.logging.Logger;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.codec.binary.Hex;
 
+/**
+ * 加密工具类
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
+ */
 public class HashUtil {
 	
 	/**

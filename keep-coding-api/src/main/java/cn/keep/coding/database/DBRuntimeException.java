@@ -5,8 +5,10 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * 数据库操作运行期异常
- * @author kingapex
- * 2010-1-6下午06:16:47
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class DBRuntimeException extends RuntimeException {
 

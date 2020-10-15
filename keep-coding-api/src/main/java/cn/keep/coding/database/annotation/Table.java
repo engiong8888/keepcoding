@@ -7,7 +7,10 @@ import java.lang.annotation.Target;
 
 /**
  * 标识为数据库的表名
- * @author Snow
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Target(ElementType.TYPE) 
 @Retention(RetentionPolicy.RUNTIME) 

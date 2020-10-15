@@ -15,12 +15,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 
 /**
- * Created by kingapex on 2018/3/6.
  * 数据源配置
- * @author kingapex
- * @version 1.0
- * @since 7.0.0
- * 2018/3/6
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Configuration
 @ConditionalOnProperty(value = "keepcoding.product", havingValue = "stand")

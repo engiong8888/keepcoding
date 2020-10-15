@@ -11,7 +11,7 @@
     <description>demo服务提供者</description>
 
 	<parent>
-		<groupId>cn.gnw</groupId>
+		<groupId>cn.keep.coding</groupId>
         <artifactId>keep-coding-parent</artifactId>
         <version>0.0.1-SHAPSHOT</version>
 	</parent>
@@ -19,7 +19,7 @@
 	<dependencies>
 
 		<dependency>
-			<groupId>cn.gnw</groupId>
+			<groupId>cn.keep.coding</groupId>
 			<artifactId>keep-coding-api</artifactId>
 			<version>0.0.1-SHAPSHOT</version>
 		</dependency>

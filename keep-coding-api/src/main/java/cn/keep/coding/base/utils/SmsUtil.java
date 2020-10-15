@@ -9,9 +9,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 短信类
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2018-09-19 13:48
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class SmsUtil {
 

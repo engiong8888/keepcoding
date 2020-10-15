@@ -10,7 +10,8 @@ import java.io.Serializable;
  * @ClassName User
  * @Description TODO
  * @Author cheng
- * @Date 2020/9/29 14:53
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
  * @Version 1.0
  */
 @Table(name = "user")

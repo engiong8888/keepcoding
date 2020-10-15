@@ -6,6 +6,14 @@ import java.security.SecureRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 生成唯一识别号工具
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
+ *
+ */
 public class UniqueKeyUtil {
 	protected static Logger logger = LoggerFactory.getLogger(UniqueKeyUtil.class);
 	private static SecureRandom seederStatic = null;

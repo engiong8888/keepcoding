@@ -10,8 +10,10 @@ import org.apache.ibatis.type.TypeHandler;
 
 /**
  * 将Mybatis的null值转为空字符串
- * @author shemg
- * @date 2016/12/2
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  *
  */
 public class EmptyStringIfNull implements TypeHandler<String> {

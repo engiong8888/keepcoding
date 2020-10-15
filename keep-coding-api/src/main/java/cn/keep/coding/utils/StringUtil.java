@@ -19,8 +19,10 @@ import java.util.regex.Pattern;
 
 /**
  * 字串工具类
- *
- * @author kingapex 2010-1-6下午01:52:58
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @SuppressWarnings("AlibabaUndefineMagicConstant")
 public class StringUtil {

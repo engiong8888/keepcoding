@@ -2,9 +2,10 @@ package cn.keep.coding.push.api.entity.huaweipush;
 
 /**
  * 华为接口api
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2018-10-29 9:54
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class HuweiApiConfig {
 

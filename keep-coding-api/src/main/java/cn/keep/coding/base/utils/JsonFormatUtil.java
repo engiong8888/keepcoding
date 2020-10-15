@@ -2,8 +2,10 @@ package cn.keep.coding.base.utils;
 
 /**
  * JSON格式工具类
- * author: shemg
- * date: 2018-07-12 10:03
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class JsonFormatUtil {
 

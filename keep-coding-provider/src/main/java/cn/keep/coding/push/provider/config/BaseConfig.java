@@ -5,9 +5,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * 基础配置类
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2018-11-15 15:26
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Component
 @ConfigurationProperties(prefix = "baseConfig")

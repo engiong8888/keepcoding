@@ -17,9 +17,10 @@ import java.util.Map;
 
 /**
  * 反射机制工具类
- * @author Snow create in 2018/3/21
- * @version v2.0
- * @since v7.0.0
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class ReflectionUtil {
 

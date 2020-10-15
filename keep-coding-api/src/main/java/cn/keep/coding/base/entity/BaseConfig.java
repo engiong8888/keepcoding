@@ -4,8 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * 基础配置实体类
- * author: shemg
- * date: 2018-06-19 14:33
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class BaseConfig {
     String logPath = null;

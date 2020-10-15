@@ -11,9 +11,10 @@ import java.util.List;
 /**
  * 华为http请求工具类
  *
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2018-10-25 9:29
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class HttpClientUtil {
 

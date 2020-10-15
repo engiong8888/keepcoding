@@ -7,8 +7,10 @@ import java.lang.annotation.Target;
 
 /**
  * 标识不是数据库读写的字段
- * @author kingapex
- * 2010-1-22下午04:08:58
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Retention(RetentionPolicy.RUNTIME) 
 @Target(ElementType.METHOD) 

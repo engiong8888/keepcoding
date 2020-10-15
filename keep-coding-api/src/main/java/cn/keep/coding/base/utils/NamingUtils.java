@@ -5,10 +5,11 @@ import java.util.regex.Pattern;
 
 /**
  * 命名格式工具
- * 
- * @author shemg
- * @date 2015-08-26
  *
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class NamingUtils {
 	

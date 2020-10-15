@@ -6,10 +6,10 @@ import java.util.Iterator;
 
 /**
  * 字符串处理工具
- *
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2019-01-25 10:41
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class StringUtil {
     public static String buildStr (String str, JSONObject jsonObject) {

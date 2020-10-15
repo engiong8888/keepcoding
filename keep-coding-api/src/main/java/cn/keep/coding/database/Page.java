@@ -10,10 +10,10 @@ import java.util.List;
  * 分页对象. 包含当前页数据及分页信息如总记录数.
  *
  * @param <T> 数据类型
- * @author kingapex
- * @version v1.0
- * @since v7.0.0
- * 2017年8月15日 上午10:55:08
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class Page<T> implements Serializable {

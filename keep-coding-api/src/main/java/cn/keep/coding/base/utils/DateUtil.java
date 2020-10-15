@@ -8,9 +8,12 @@ import java.util.GregorianCalendar;
 
 /**
  *<pre><b><font color="blue">DateUtils</font></b></pre>
- *
  *<pre><b>&nbsp;--描述说明--</b></pre>
  * JDK版本：JDK1.5.0
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class DateUtil {
 	

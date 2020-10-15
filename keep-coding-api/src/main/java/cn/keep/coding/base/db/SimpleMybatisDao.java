@@ -9,6 +9,14 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
+/**
+ * @ClassName SimpleMybatisDao
+ * @Description mybatis通用dao
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
+ */
 public class SimpleMybatisDao {
 	
 	private SqlSessionTemplate sqlSessionTemplate;

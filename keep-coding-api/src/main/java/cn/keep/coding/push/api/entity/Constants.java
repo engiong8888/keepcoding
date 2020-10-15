@@ -2,9 +2,10 @@ package cn.keep.coding.push.api.entity;
 
 /**
  * 系统常量
- * @author shemg
- * @mail xuys@txtws.com
- * @date: 2018-07-05 9:15
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  *
  */
 public class Constants {

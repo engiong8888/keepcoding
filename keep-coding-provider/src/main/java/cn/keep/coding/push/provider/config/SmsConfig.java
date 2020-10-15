@@ -5,10 +5,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * 短信配置类
- *
- * @author: chengzd
- * @mail chengzd@txtws.com
- * @date: 2018-11-02 14:24
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Component
 @ConfigurationProperties(prefix = "sms")

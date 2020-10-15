@@ -13,9 +13,10 @@ import java.util.List;
 
 /**
  * Redis 配置类
- * @author: shemg
- * @mail xuys@txtws.com
- * @date: 2018-07-05 14:19
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 @Configuration
 @ConfigurationProperties(prefix = "spring.redis")

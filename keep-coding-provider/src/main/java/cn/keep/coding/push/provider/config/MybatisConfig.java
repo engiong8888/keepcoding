@@ -13,9 +13,10 @@ import javax.sql.DataSource;
 
 /**
  * Mybatis 配置类
- * @author: shemg
- * @mail xuys@txtws.com
- * @date: 2018-07-05 17:05
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 //@Configuration
 public class MybatisConfig {

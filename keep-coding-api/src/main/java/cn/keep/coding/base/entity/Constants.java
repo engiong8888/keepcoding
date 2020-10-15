@@ -2,8 +2,10 @@ package cn.keep.coding.base.entity;
 
 /**
  * 系统常量
- * @author shemg
- * @date 2018/07/05
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  *
  */
 public class Constants {

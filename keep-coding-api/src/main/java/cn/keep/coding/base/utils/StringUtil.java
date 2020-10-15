@@ -13,7 +13,10 @@ import org.springframework.web.util.HtmlUtils;
 
 /**
  * 字符串处理工具类
- * @author shemg
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  *
  */
 public class StringUtil {

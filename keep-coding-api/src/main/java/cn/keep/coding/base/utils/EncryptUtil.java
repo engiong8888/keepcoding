@@ -18,8 +18,10 @@ import java.util.Map;
 
 /**
  * 加密工具类
- * author: shemg
- * date: 2018-06-29 13:49
+ * @Author cheng
+ * @mail engiong8888@sina.cn
+ * @Date 2020/9/29
+ * @Version 1.0
  */
 public class EncryptUtil {
 
