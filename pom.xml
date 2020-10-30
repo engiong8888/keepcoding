@@ -21,6 +21,7 @@
 	<modules>
 		<module>keep-coding-api</module>
 		<module>keep-coding-provider</module>
+		<module>consumer</module>
     </modules>
 
 	<properties>

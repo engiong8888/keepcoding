@@ -1,0 +1,50 @@
+server:
+  port: 9700
+spring:
+  profiles:
+    active: dev
+  application:
+    name: consumer
+  #数据库配置
+  datasource:
+    username: root
+    password: cheng6115896
+    driver-class-name: com.mysql.jdbc.Driver
+    druid:
+      web-stat-filter:
+        enabled: false
+      test:
+        url: jdbc:mysql://106.54.178.88:3306/test?useUnicode=true&characterEncoding=utf8&autoReconnect=true&useSSL=false
+      dev:
+        url: jdbc:mysql://106.54.178.88:3306/dev?useUnicode=true&characterEncoding=utf8&autoReconnect=true&useSSL=false
+
+mybatis:
+  mapperLocations : classpath:mybatis/*.xml
+logging:
+  config: classpath:logback-boot.xml
+  level:
+    root: INFO
+    org.springframework.cloud.sleuth: DEBUG
+  path: /data/logs/java/${spring.application.name}/
+keepcoding:
+  product: stand
+baseConfig:
+  apiAccessDomain: https://test.com/pss
+management:
+  security:
+    enabled: false
+xxl:
+  job:
+    admin:
+      addresses:  http://localhost:8080/xxl-job-admin
+    executor:
+      appname: job-executer
+      ip:
+      port: 9999
+      logpath:  /data/applogs/xxl-serverlogs
+      logretentiondays: -1
+    accessToken:
+sms:
+  source: "99"
+  timeOut: 60	#短信获取频率，1分钟请求一次
+  frequency: 24
