@@ -52,6 +52,17 @@ public class DataSourceConfig {
         return daosupport;
     }
 
+    /**
+     * 本地daoSupport
+     * @param jdbcTemplate 本地jdbcTemplate
+     * @return
+     */
+    @Bean(name = "localDaoSupport")
+    public DaoSupport localDaoSupport(@Qualifier("localJdbcTemplate") JdbcTemplate jdbcTemplate) {
+        DaoSupport daosupport = new DaoSupportImpl(jdbcTemplate);
+        return daosupport;
+    }
+
 
     /*----------------------------------------------------------------------------*/
     /*                           JdbcTemplate 配置                                */
@@ -82,7 +93,16 @@ public class DataSourceConfig {
     }
 
 
-
+    /**
+     * 本地jdbcTemplate
+     * @param dataSource 交易数据源
+     * @return
+     */
+    @Bean(name = "devJdbcTemplate")
+    public JdbcTemplate localJdbcTemplate(
+            @Qualifier("localDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
 
 
     /*----------------------------------------------------------------------------*/
@@ -113,31 +133,51 @@ public class DataSourceConfig {
         return  DruidDataSourceBuilder.create().build();
     }
 
-
+    /**
+     * local数据源
+     * @return
+     */
+    @Bean(name = "localDataSource")
+    @Qualifier("localDataSource")
+    @ConfigurationProperties(prefix="spring.datasource.druid.local")
+    public DataSource localDataSource() {
+        return  DruidDataSourceBuilder.create().build();
+    }
 
     /*----------------------------------------------------------------------------*/
     /*                           事务配置                                         */
     /*----------------------------------------------------------------------------*/
 
     /**
-     * 会员事务
+     * test事务
      * @param dataSource
      * @return
      */
     @Bean
     @Primary
-    public PlatformTransactionManager memberTransactionManager(@Qualifier("testDataSource")DataSource dataSource) {
+    public PlatformTransactionManager testTransactionManager(@Qualifier("testDataSource")DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 
     /**
-     * 商品事务
+     * dev事务
      * @param dataSource
      * @return
      */
     @Bean
 
     public PlatformTransactionManager devTransactionManager(@Qualifier("devDataSource")DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+
+    /**
+     * local事务
+     * @param dataSource
+     * @return
+     */
+    @Bean
+
+    public PlatformTransactionManager localTransactionManager(@Qualifier("localDataSource")DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 
