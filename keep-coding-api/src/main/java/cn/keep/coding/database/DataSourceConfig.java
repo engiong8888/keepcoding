@@ -98,7 +98,7 @@ public class DataSourceConfig {
      * @param dataSource 交易数据源
      * @return
      */
-    @Bean(name = "devJdbcTemplate")
+    @Bean(name = "localJdbcTemplate")
     public JdbcTemplate localJdbcTemplate(
             @Qualifier("localDataSource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);

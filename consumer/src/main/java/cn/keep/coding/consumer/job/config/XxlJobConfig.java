@@ -23,6 +23,9 @@ public class XxlJobConfig {
     @Value("${xxl.job.executor.appname}")
     private String appName;
 
+    @Value("${xxl.job.executor.address}")
+    private String address;
+
     @Value("${xxl.job.executor.ip}")
     private String ip;
 
@@ -39,24 +42,19 @@ public class XxlJobConfig {
     private int logRetentionDays;
 
 
-    @Bean(initMethod = "start", destroyMethod = "destroy")
-    public XxlJobExecutor xxlJobExecutor() {
-        try {
-            logger.info(">>>>>>>>>>> xxl-job config init.");
-            logger.info(this.toString());
-            XxlJobSpringExecutor xxlJobSpringExecutor = new XxlJobSpringExecutor();
-            xxlJobSpringExecutor.setAdminAddresses(adminAddresses);
-            xxlJobSpringExecutor.setAppName(appName);
-            xxlJobSpringExecutor.setIp(ip);
-            xxlJobSpringExecutor.setPort(port);
-            xxlJobSpringExecutor.setAccessToken(accessToken);
-            xxlJobSpringExecutor.setLogPath(logPath);
-            xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
-            return xxlJobSpringExecutor;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    @Bean
+    public XxlJobSpringExecutor xxlJobExecutor() {
+        logger.info(">>>>>>>>>>> xxl-job config init.");
+        XxlJobSpringExecutor xxlJobSpringExecutor = new XxlJobSpringExecutor();
+        xxlJobSpringExecutor.setAdminAddresses(adminAddresses);
+        xxlJobSpringExecutor.setAppName(appName);
+        xxlJobSpringExecutor.setIp(ip);
+        xxlJobSpringExecutor.setPort(port);
+        xxlJobSpringExecutor.setAccessToken(accessToken);
+        xxlJobSpringExecutor.setLogPath(logPath);
+        xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
+
+        return xxlJobSpringExecutor;
     }
 
     @Override

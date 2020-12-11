@@ -1,5 +1,6 @@
 package cn.keep.coding.base.utils;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.sql.Blob;
@@ -37,6 +38,24 @@ public class StringUtil {
 		}
 		return bool;
 	}
+
+	/**
+	 * 中文encode转码
+	 * @param string
+	 * @return
+	 */
+	public static String encodeString(String string){
+		String str = string;
+		try {
+			if(!isBlank(str)){
+				str = URLEncoder.encode(str, "UTF-8");
+			}
+		} catch (Exception e) {
+			System.out.println("编码出错");
+			e.printStackTrace();
+		}
+		return str;
+	}
 	
 	/**
 	 * 获得表单提交的数据
@@ -53,6 +72,15 @@ public class StringUtil {
 			e.printStackTrace();
 		}
 		return str;
+	}
+
+	public static void main(String[] args) {
+
+		String str = "边唱边喝-round-2";
+		String result = "";
+
+		result = encodeString(str);
+		System.out.println(result);
 	}
 	
 	/**
